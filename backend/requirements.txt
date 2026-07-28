@@ -1,0 +1,23 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+psycopg2-binary
+pydantic
+pydantic-settings
+langgraph
+langchain
+langchain-openai
+langchain-community
+scikit-learn
+pandas
+numpy
+# xgboost
+# transformers
+# torch --index-url https://download.pytorch.org/whl/cpu
+python-jose[cryptography]
+passlib[bcrypt]
+loguru
+faker
+python-multipart
+pytest
+httpx

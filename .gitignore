@@ -1,0 +1,15 @@
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+.env
+*.db
+backend/smartcampus.db
+backend/patch_user.py
+backend/test_all_agents.py
+backend/test_chat.py
+backend/backend_log.txt
+.DS_Store
+dist/
+build/
+backend/models/
