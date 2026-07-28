@@ -115,6 +115,10 @@ class Faculty(Base):
     timetable_slots = relationship("TimetableSlot", back_populates="faculty")
     feedback_responses = relationship("FeedbackResponse", back_populates="faculty")
 
+    @property
+    def name(self):
+        return self.faculty_name
+
 
 class Classroom(Base):
     __tablename__ = "classrooms"
@@ -152,6 +156,14 @@ class Course(Base):
     attendance_records = relationship("AttendanceRecord", back_populates="course")
     exam_schedules = relationship("ExamSchedule", back_populates="course")
     feedback_responses = relationship("FeedbackResponse", back_populates="course")
+
+    @property
+    def name(self):
+        return self.course_name
+
+    @property
+    def course_code(self):
+        return self.course_id
 
 
 class TimetableSlot(Base):

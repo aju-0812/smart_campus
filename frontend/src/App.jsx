@@ -35,7 +35,6 @@ const Loading = () => (
 
 const EmptyState = ({ icon, msg }) => (
   <div className="empty-state">
-    <span className="empty-icon">{icon}</span>
     <p>{msg}</p>
   </div>
 );
@@ -162,7 +161,7 @@ function Overview({ student }) {
   return (
     <div className="page">
       <div className="page-header">
-        <h2>Welcome back, {student.name.split(' ')[0]}! 👋</h2>
+        <h2>Welcome back, {student.name.split(' ')[0]}!</h2>
         <p className="page-sub">{student.department} · {student.email}</p>
       </div>
       <div className="metric-grid">
@@ -221,7 +220,7 @@ function Timetable({ student }) {
 
   return (
     <div className="page">
-      <div className="page-header"><h2>📅 Timetable Agent</h2><p className="page-sub">CSP-based schedule optimizer</p></div>
+      <div className="page-header"><h2>Timetable Agent</h2><p className="page-sub">CSP-based schedule optimizer</p></div>
       {loading ? <Loading /> : (
         <>
           <div className="day-tabs">
@@ -269,7 +268,7 @@ function Attendance({ student }) {
 
   return (
     <div className="page">
-      <div className="page-header"><h2>📊 Attendance Agent</h2><p className="page-sub">ML-powered risk detection · Random Forest model</p></div>
+      <div className="page-header"><h2>Attendance Agent</h2><p className="page-sub">ML-powered risk detection · Random Forest model</p></div>
       {loading ? <Loading /> : (
         <>
           <div className="metric-grid">
@@ -341,7 +340,7 @@ function Navigation({ student }) {
 
   return (
     <div className="page">
-      <div className="page-header"><h2>🗺️ Campus Navigation Agent</h2><p className="page-sub">A* pathfinding algorithm · Dijkstra shortest route</p></div>
+      <div className="page-header"><h2>Campus Navigation Agent</h2><p className="page-sub">A* pathfinding algorithm · Dijkstra shortest route</p></div>
       <div className="two-col">
         <div className="card">
           <h3 className="card-title">🔍 Find Route</h3>
@@ -427,7 +426,7 @@ function Hostel({ student }) {
 
   return (
     <div className="page">
-      <div className="page-header"><h2>🏨 Hostel Assistant Agent</h2><p className="page-sub">Complaint classifier · TF-IDF · Mess menu</p></div>
+      <div className="page-header"><h2>Hostel Assistant Agent</h2><p className="page-sub">Complaint classifier · TF-IDF · Mess menu</p></div>
       <div className="two-col">
         <div>
           {info?.hostel_allocated ? (
@@ -510,7 +509,7 @@ function Cafeteria({ student }) {
 
   return (
     <div className="page">
-      <div className="page-header"><h2>🍽️ Cafeteria Recommendation Agent</h2><p className="page-sub">Content-Based + Collaborative Filtering</p></div>
+      <div className="page-header"><h2>Cafeteria Recommendation Agent</h2><p className="page-sub">Content-Based + Collaborative Filtering</p></div>
       {ratingMsg && <div className="toast">{ratingMsg}</div>}
       <div className="two-col">
         <div className="card">
@@ -596,7 +595,7 @@ function Placement({ student }) {
 
   return (
     <div className="page">
-      <div className="page-header"><h2>💼 Placement Preparation Agent</h2><p className="page-sub">KNN matching · TF-IDF · Interview Q&amp;A</p></div>
+      <div className="page-header"><h2>Placement Preparation Agent</h2><p className="page-sub">KNN matching · TF-IDF · Interview Q&A</p></div>
       <div className="tab-row">
         {['profile','companies','interview','skills'].map(t=>(
           <button key={t} className={`tab-btn ${tab===t?'active':''}`} onClick={()=>setTab(t)}>{t.charAt(0).toUpperCase()+t.slice(1)}</button>
@@ -714,7 +713,7 @@ function Exam({ student }) {
 
   return (
     <div className="page">
-      <div className="page-header"><h2>📚 Exam Discovery Agent</h2><p className="page-sub">Rule Engine · Countdown · Hall Tickets · Results</p></div>
+      <div className="page-header"><h2>Exam Discovery Agent</h2><p className="page-sub">Rule Engine · Countdown · Hall Tickets · Results</p></div>
       {schedule?.countdown && <div className="countdown-banner">{schedule.countdown}</div>}
       <div className="tab-row">
         {['schedule','tickets','results'].map(t=>(
@@ -847,7 +846,7 @@ function Hackathon({ student }) {
 
   return (
     <div className="page">
-      <div className="page-header"><h2>🚀 Hackathon Recommendation Agent</h2><p className="page-sub">Jaccard Similarity · Content-Based Filtering</p></div>
+      <div className="page-header"><h2>Hackathon Recommendation Agent</h2><p className="page-sub">Jaccard Similarity · Content-Based Filtering</p></div>
       {msg && <div className="toast">{msg}</div>}
       <div className="tab-row">
         {[['recommended','🤖 For You'],['all','🌐 All'],['registered','✅ Registered']].map(([t,l])=>(
@@ -898,7 +897,7 @@ function Transport({ student }) {
 
   return (
     <div className="page">
-      <div className="page-header"><h2>🚌 Transport Information Agent</h2><p className="page-sub">Exponential Smoothing delay prediction · Dijkstra route planning</p></div>
+      <div className="page-header"><h2>Transport Information Agent</h2><p className="page-sub">Exponential Smoothing delay prediction · Dijkstra route planning</p></div>
       <div className="two-col">
         <div className="card">
           <h3 className="card-title">🚌 Campus Buses</h3>
@@ -975,7 +974,7 @@ function Feedback({ student }) {
 
   return (
     <div className="page">
-      <div className="page-header"><h2>📝 Feedback Collection Agent</h2><p className="page-sub">TextBlob Sentiment Analysis · Real-time analytics</p></div>
+      <div className="page-header"><h2>Feedback Collection Agent</h2><p className="page-sub">TextBlob Sentiment Analysis · Real-time analytics</p></div>
       <div className="two-col">
         <div className="card">
           <h3 className="card-title">Submit Feedback</h3>
@@ -1082,7 +1081,7 @@ function Alumni({ student }) {
 
   return (
     <div className="page">
-      <div className="page-header"><h2>🤝 Alumni Connect Agent</h2><p className="page-sub">KNN matching · Cosine Similarity on skill vectors</p></div>
+      <div className="page-header"><h2>Alumni Connect Agent</h2><p className="page-sub">KNN matching · Cosine Similarity on skill vectors</p></div>
       {msg && <div className="toast">{msg}</div>}
       <div className="tab-row">
         {[['recommended','🤖 Recommended'],['all','🎓 All Alumni'],['mentors','✅ My Mentors']].map(([t,l])=>(
@@ -1110,7 +1109,7 @@ function Alumni({ student }) {
 // ════════════════════════════════════════════════════════════════════════════════
 function Assistant({ student }) {
   const [messages, setMessages] = useState([
-    { role: 'bot', text: `Hi ${student.name.split(' ')[0]}! 👋 I'm your Smart Campus AI with 11 agents. Ask me anything!` }
+    { role: 'bot', text: `Hi ${student.name.split(' ')[0]}! I am your Smart Campus AI Assistant. Ask me anything!` }
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -1137,13 +1136,13 @@ function Assistant({ student }) {
       });
       setMessages(m => [...m, { role: 'bot', text: data.response }]);
     } catch {
-      setMessages(m => [...m, { role: 'bot', text: '❌ Connection error. Make sure the backend is running.' }]);
+      setMessages(m => [...m, { role: 'bot', text: 'Connection error. Make sure the backend is running.' }]);
     } finally { setLoading(false); }
   };
 
   return (
     <div className="page chat-page">
-      <div className="page-header"><h2>🤖 Smart Campus AI Assistant</h2><p className="page-sub">11-Agent Orchestrator · LangGraph routing</p></div>
+      <div className="page-header"><h2>Smart Campus AI Assistant</h2><p className="page-sub">11-Agent Orchestrator · LangGraph routing</p></div>
       <div className="chat-wrap">
         <div className="chat-messages">
           {messages.map((m,i)=>(

@@ -18,6 +18,7 @@ class FacultyBase(BaseModel):
     faculty_id: str
     faculty_name: str
     department_id: Optional[int] = None
+    name: Optional[str] = None
 
 class FacultyResponse(FacultyBase):
     id: int
@@ -40,6 +41,8 @@ class CourseBase(BaseModel):
     department_id: Optional[int] = None
     semester: int
     faculty_id: int
+    name: Optional[str] = None
+    course_code: Optional[str] = None
 
 class CourseResponse(CourseBase):
     id: int

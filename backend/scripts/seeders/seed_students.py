@@ -114,12 +114,40 @@ def seed_students(db: Session):
     db.commit()
 
     print("Seeding Transport (Buses)...")
+    ROUTE_NAMES = [
+        "Campus Express A", "Campus Express B", "City Shuttle North", "City Shuttle South", 
+        "East Ring Shuttle", "West Ring Shuttle", "Railway Station Route", "Central Bus Stand Route", 
+        "Tech Park Route", "Residential Colony Route", "Metro Station Link", "North Suburbs Route", 
+        "South Suburbs Route", "Academic Loop", "Hostel Shuttle", "Staff Special A", 
+        "Staff Special B", "Night Shuttle", "Weekend City Express", "Airport Connector"
+    ]
+    
+    STOP_NAMES_POOL = [
+        "Main Gate", "Railway Station", "Central Bus Stand", "Tech Park", "Campus Square", 
+        "Admin Block Bus Stop", "Hostel Block Bus Stop", "Academic Block Circle", "Metro Junction", 
+        "Central Library Bus Bay", "Sports Complex Bus Stop", "Medical College Junction", 
+        "Food Court Circle", "Innovation Hub", "Science Block Stop", "West Suburb Gate", 
+        "East Suburb Gate", "Hillside Colony", "Lakeview Plaza", "Town Center", "Market Square", 
+        "Industrial Area Gate", "Highway Crossing", "River Road Crossing", "South Suburb Plaza", 
+        "Forest Reserve Gate", "Civic Center", "Garden City Stop", "IT Park Junction"
+    ]
+    
+    DRIVER_NAMES = [
+        "Arvind Kumar", "Priya Narayanan", "Rajesh Sharma", "Suresh Patel", "Anil Deshmukh", 
+        "Vikram Singh", "Sunita Nair", "Rohan Gupta", "Deepak Joshi", "Sanjay Rao", 
+        "Karan Malhotra", "Amit Verma", "Neelam Mishra", "Harish Reddy", "Vijay Yadav"
+    ]
+
     for b in range(1, 31):
+        route_name = ROUTE_NAMES[(b - 1) % len(ROUTE_NAMES)]
+        bus_number = f"MH12 {1000 + b * 277}-{b}"
+        driver_name = DRIVER_NAMES[(b - 1) % len(DRIVER_NAMES)]
+        
         bus = Bus(
-            bus_number=f"MH12 {random.randint(1000, 9999)}-{b}",
-            route_name=f"Route {b}",
+            bus_number=bus_number,
+            route_name=route_name,
             capacity=random.choice([40, 50, 60]),
-            driver_name=random.choice(["Ramesh", "Suresh", "Mahesh", "Dinesh", "Ganesh"]),
+            driver_name=driver_name,
             driver_phone=f"99{random.randint(10000000, 99999999)}",
             is_active=True
         )
@@ -127,16 +155,27 @@ def seed_students(db: Session):
         db.flush()
         
         # Stops for this bus
-        for stop_num in range(1, random.randint(15, 31)):
+        num_stops = random.randint(10, 18)
+        shuffled_stops = list(STOP_NAMES_POOL)
+        random.shuffle(shuffled_stops)
+        bus_stops = shuffled_stops[:num_stops]
+        
+        for stop_idx, stop_name in enumerate(bus_stops):
+            stop_order = stop_idx + 1
+            minutes_offset = int((stop_idx / num_stops) * 90)
+            arrival_hour = 7 + (minutes_offset // 60)
+            arrival_minute = minutes_offset % 60
+            
             db.add(BusStop(
                 bus_id=bus.id,
-                stop_name=f"Stop {stop_num} Area {chr(64 + (stop_num % 26 + 1))}",
-                stop_order=stop_num,
-                scheduled_arrival=f"{7 + (stop_num // 6):02d}:{(stop_num % 6) * 10:02d}",
-                latitude=12.9 + random.uniform(-0.1, 0.1),
-                longitude=77.5 + random.uniform(-0.1, 0.1)
+                stop_name=stop_name,
+                stop_order=stop_order,
+                scheduled_arrival=f"{arrival_hour:02d}:{arrival_minute:02d}",
+                latitude=12.97 + random.uniform(-0.02, 0.02),
+                longitude=77.59 + random.uniform(-0.02, 0.02)
             ))
             
+        # Add morning trip To Campus
         db.add(BusSchedule(
             bus_id=bus.id,
             direction="To Campus",
@@ -144,4 +183,57 @@ def seed_students(db: Session):
             arrival_time="08:30",
             days_of_operation="Mon-Sat"
         ))
+        
+        # Add evening trip From Campus
+        db.add(BusSchedule(
+            bus_id=bus.id,
+            direction="From Campus",
+            departure_time="16:30",
+            arrival_time="18:00",
+            days_of_operation="Mon-Sat"
+        ))
     db.commit()
+
+    print("Seeding Attendance Records...")
+    from app.models.models import AttendanceRecord, Course
+    all_courses = db.query(Course).all()
+    from collections import defaultdict
+    courses_by_sem = defaultdict(list)
+    for c in all_courses:
+        courses_by_sem[c.semester].append(c)
+        
+    attendance_records = []
+    start_date = date.today() - timedelta(days=50)
+    
+    class_dates = []
+    curr = start_date
+    while curr <= date.today():
+        if curr.weekday() < 5:  # Mon-Fri
+            class_dates.append(curr)
+        curr += timedelta(days=1)
+        
+    for student in all_students:
+        student_courses = courses_by_sem.get(student.semester, [])
+        if not student_courses:
+            continue
+            
+        target_pct = student.attendance_percentage or 80.0
+        for course in student_courses:
+            for dt in class_dates:
+                status = "Present" if random.random() * 100 < target_pct else "Absent"
+                attendance_records.append(AttendanceRecord(
+                    student_id=student.id,
+                    course_id=course.id,
+                    date=dt,
+                    status=status
+                ))
+                
+        if len(attendance_records) >= 30000:
+            db.bulk_save_objects(attendance_records)
+            db.commit()
+            attendance_records = []
+            
+    if attendance_records:
+        db.bulk_save_objects(attendance_records)
+        db.commit()
+    print("Seeded attendance records successfully.")

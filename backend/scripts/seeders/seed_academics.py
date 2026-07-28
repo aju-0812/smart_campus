@@ -51,6 +51,99 @@ FACULTY_LAST_NAMES = ["Raman", "Kumar", "Singh", "Sharma", "Verma", "Patel", "Re
 
 DESIGNATIONS = ["Professor", "Associate Professor", "Assistant Professor", "Lecturer"]
 
+REALISTIC_COURSES = {
+    "AIDS": [
+        "Introduction to AI", "Python for Data Science", "Data Science Lab", "Applied Statistics", "Linear Algebra for ML",
+        "Machine Learning", "Data Mining & Warehousing", "Deep Learning", "Big Data Analytics", "Optimization Techniques",
+        "Natural Language Processing", "Computer Vision Algorithms", "Reinforcement Learning", "Predictive Analytics", "AI Ethics & Governance",
+        "Neural Networks", "Data Science Pipeline", "Time Series Analysis", "Pattern Recognition", "AI in Healthcare",
+        "Recommendation Systems", "Generative AI Models", "Cognitive Computing", "Data Science Seminar", "Capstone AI Project"
+    ],
+    "CSE": [
+        "Programming in C", "Data Structures", "Design & Analysis of Algorithms", "Discrete Mathematics", "Digital Logic Design",
+        "Operating Systems", "Computer Networks", "Database Management Systems", "Object Oriented Programming", "Computer Architecture",
+        "Software Engineering", "Compiler Design", "Theory of Computation", "Web Technology", "Cloud Computing",
+        "Cryptography & Security", "Distributed Systems", "Mobile Application Dev", "Internet of Things", "Artificial Intelligence",
+        "Network Security", "Information Retrieval", "Human Computer Interaction", "Software Testing", "Systems Programming"
+    ],
+    "IT": [
+        "Basics of Information Tech", "Web Programming", "Java Programming", "Database Administration", "Information Coding",
+        "Network Protocols", "Software Engineering Principles", "System Administration", "IT Project Management", "Cloud Infrastructure",
+        "E-Commerce & Security", "Multimedia Systems", "Enterprise Computing", "Data Warehousing", "Cyber Security & Forensics",
+        "Mobile Computing", "Web Services & SOA", "IT Infrastructure Design", "User Interface Design", "Distributed Databases"
+    ],
+    "MECH": [
+        "Engineering Mechanics", "Thermodynamics", "Strength of Materials", "Fluid Mechanics", "Kinematics of Machinery",
+        "Manufacturing Technology", "Heat & Mass Transfer", "Design of Machine Elements", "CAD/CAM Principles", "Dynamics of Machinery",
+        "Automobile Engineering", "Mechatronics Systems", "Power Plant Engineering", "Refrigeration & AC", "Fluid Power Systems",
+        "Industrial Engineering", "Finite Element Analysis", "Computational Fluid Dynamics", "Turbomachinery", "Composite Materials"
+    ],
+    "CIVIL": [
+        "Engineering Surveying", "Building Materials", "Mechanics of Fluids", "Structural Analysis", "Concrete Technology",
+        "Geotechnical Engineering", "Transportation Engineering", "Environmental Engineering", "Design of Steel Structures", "Hydrology & Water Resources",
+        "Foundation Engineering", "Construction Planning & Mgmt", "Bridge Engineering", "Prestressed Concrete", "Earthquake Engineering",
+        "GIS & Remote Sensing", "Town Planning", "Environmental Impact Assessment", "Railways & Airports", "Structural Dynamics"
+    ],
+    "EEE": [
+        "Electric Circuits", "Electromagnetic Fields", "Electrical Machines", "Power Systems Analysis", "Control Systems",
+        "Analog & Digital Electronics", "Power Electronics", "Transmission & Distribution", "Signals & Systems", "Electrical Measurements",
+        "Renewable Energy Sources", "High Voltage Engineering", "Microprocessors & MCU", "Power System Protection", "Smart Grid Technology",
+        "Special Electrical Machines", "Digital Signal Processing", "Electrical Safety", "Industrial Automation", "Energy Auditing"
+    ],
+    "ECE": [
+        "Electronic Devices & Circuits", "Digital Electronics", "Signals and Systems", "Analog Communications", "Microprocessors & Interfaces",
+        "Electromagnetic Waves", "Digital Signal Processing", "Digital Communications", "VLSI Design & Technology", "Embedded Systems",
+        "Antennas & Propagation", "Microwave Engineering", "Fiber Optic Communication", "Wireless Communication Systems", "Computer Communication Networks",
+        "CMOS VLSI Design", "ARM System Architecture", "Radar Systems", "Satellite Communication", "RF Circuit Design"
+    ],
+    "BME": [
+        "Anatomy & Physiology", "Biomaterials & Biocompatibility", "Biomedical Instrumentation", "Medical Sensors & Transducers", "Biosignals & Systems",
+        "Biomedical Signal Processing", "Medical Image Processing", "Biomechanics & Rehabilitation", "Clinical Engineering", "Diagnostic Devices",
+        "Therapeutic Equipment", "Prosthetics & Orthotics", "Biotelemetry", "Medical Electronics", "Hospital Management Systems"
+    ],
+    "AGRI": [
+        "Soil Science & Agronomy", "Irrigation & Drainage Eng", "Farm Power & Machinery", "Post-Harvest Engineering", "Crop Physiology & Biochemistry",
+        "Agricultural Meteorology", "Soil & Water Conservation", "Food Process Engineering", "Sustainable Agriculture", "Dairy Technology",
+        "Tractor & Power Systems", "Greenhouse Technology", "Agro-Chemicals", "Farm Business Management", "Precision Farming"
+    ],
+    "CHEM": [
+        "Chemical Process Calculations", "Fluid Flow Operations", "Chemical Technology", "Mechanical Unit Operations", "Chemical Thermodynamics",
+        "Heat Transfer Operations", "Mass Transfer Operations", "Chemical Reaction Engineering", "Process Dynamics & Control", "Transport Phenomena",
+        "Plant Design & Economics", "Safety in Chemical Plants", "Petroleum Refining Eng", "Polymer Technology", "Wastewater Treatment"
+    ],
+    "FOOD": [
+        "Food Microbiology", "Food Chemistry & Nutrition", "Principles of Food Preservation", "Dairy Products Technology", "Bakery & Confectionery Tech",
+        "Food Packaging Technology", "Food Quality & Safety Assurance", "Fruit & Vegetable Tech", "Cereal & Pulses Tech", "Beverage Technology",
+        "Meat and Poultry Processing", "Food Additives & Toxicology", "Sensory Evaluation", "Food Laws & Regulations", "Nutraceuticals"
+    ],
+    "MBA": [
+        "Marketing Management", "Financial Accounting & Analysis", "Human Resource Management", "Organizational Behavior", "Strategic Management",
+        "Operations & Supply Chain", "Business Analytics", "Managerial Economics", "Financial Management", "Consumer Behavior",
+        "Corporate Governance & Ethics", "Entrepreneurship Development", "Services Marketing", "International Business", "Project Management"
+    ],
+    "MCA": [
+        "Java Programming & OOP", "Advanced Database Management", "Web Technologies", "Linux System Administration", "Python Programming",
+        "Software Engineering Practices", "Data Analytics & Mining", "Cloud Computing Architectures", "Information Security", "Software Architecture",
+        "Design Patterns", "NoSQL Databases", "Mobile App Development", "Big Data Analytics", "DevOps & Agility"
+    ],
+    "PHY": [
+        "Classical Mechanics", "Electromagnetism Theory", "Quantum Mechanics Foundations", "Thermodynamics & Statistical", "Solid State Physics",
+        "Nuclear & Particle Physics", "Mathematical Physics", "Optics & Spectroscopy", "Laser Physics & Applications", "Nanotechnology"
+    ],
+    "MATH": [
+        "Linear Algebra & Matrices", "Calculus & Real Analysis", "Ordinary Differential Equations", "Probability & Statistics", "Complex Analysis",
+        "Numerical Methods", "Operations Research Models", "Abstract Algebra", "Discrete Mathematics", "Topology & Functional Analysis"
+    ],
+    "CHEM_SCI": [
+        "Organic Chemistry Basics", "Inorganic Chemistry Theory", "Physical Chemistry Concepts", "Analytical Chemistry Methods", "Polymer Chemistry",
+        "Environmental Chemistry", "Biochemistry Principles", "Industrial & Applied Chemistry", "Spectroscopic Techniques", "Nanomaterials"
+    ],
+    "ENG": [
+        "Technical Communication Skills", "Professional English", "Literature & Society Studies", "Creative Writing", "English for Career Success",
+        "Soft Skills & Personality", "Introduction to Linguistics", "Media and Journalism", "Business Communication", "Cross-Cultural Communication"
+    ]
+}
+
 def seed_academics(db: Session):
     print("Seeding Departments...")
     db_depts = []
@@ -80,14 +173,28 @@ def seed_academics(db: Session):
     room_types = ["Smart Classroom", "Seminar Hall", "Lecture Hall", "Computer Lab", "Physics Lab", "Chemistry Lab", "AI Lab"]
     academic_buildings = [b for b in db_buildings if b.building_type in ["Academic", "Admin"]]
     for b in academic_buildings:
+        b_prefix = b.name.split()[0]
+        if "Admin" in b.name: b_prefix = "A"
+        elif "Mechanical" in b.name: b_prefix = "M"
+        elif "Civil" in b.name: b_prefix = "C"
+        elif "ECE" in b.name: b_prefix = "ECE"
+        elif "EEE" in b.name: b_prefix = "EEE"
+        elif "AI" in b.name: b_prefix = "AI"
+
         for r in range(1, 31):  # 30 rooms per building
+            is_lab = random.random() > 0.7
+            if is_lab:
+                room_name = f"Lab-{r}" if b_prefix == "A" else f"{b_prefix}-Lab-{r}"
+            else:
+                room_name = f"{b_prefix}-{(r // 10) + 1}{r % 10:02d}"
+
             room = Classroom(
-                room_name=f"{b.name.split()[0]}-{r*100 + random.randint(1,99)}",
+                room_name=room_name,
                 building=b.name,
                 capacity=random.choice([30, 60, 100, 120]),
                 has_smartboard=random.choice([True, False]),
                 has_projector=True,
-                is_lab=random.random() > 0.7,
+                is_lab=is_lab,
                 floor=random.randint(1, b.floors),
                 room_type=random.choice(room_types)
             )
@@ -130,12 +237,22 @@ def seed_academics(db: Session):
         dept_faculty = [fac for fac in db_faculty if fac.department_id == dept.id]
         if not dept_faculty:
             continue
+        dept_courses = REALISTIC_COURSES.get(dept.department_code, ["General Studies"])
         for sem in range(1, 9):
             for c in range(5):  # 5 courses per sem
                 course_type = "Theory" if c < 3 else "Lab" if c == 3 else "Elective"
+                idx = (sem - 1) * 5 + c
+                course_name = dept_courses[idx % len(dept_courses)]
+                
+                # Suffix check to make type match name beautifully
+                if course_type == "Lab" and "Lab" not in course_name:
+                    course_name = f"{course_name} Lab"
+                elif course_type == "Elective" and "Elective" not in course_name and "Seminar" not in course_name:
+                    course_name = f"{course_name} (Elective)"
+
                 course = Course(
                     course_id=f"{dept.department_id}{sem}0{c+1}",
-                    course_name=f"{dept.department_name.split()[0]} {course_type} {sem}-{c+1}",
+                    course_name=course_name,
                     department_id=dept.id,
                     semester=sem,
                     credits=random.choice([2, 3, 4]),

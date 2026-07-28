@@ -59,13 +59,9 @@ def seed_timetable(db: Session):
     for c in courses:
         sections[(c.department_id, c.semester)].append(c)
 
-    for (dept_id, sem), sec_courses in sections.items():
-        # Assign a dedicated classroom for this section
-        if classrooms:
-            sec_room = classrooms.pop(0)
-        else:
-            print("Ran out of classrooms! Skipping remaining sections.")
-            break
+    for i, ((dept_id, sem), sec_courses) in enumerate(sections.items()):
+        # Assign a dedicated classroom for this section deterministically
+        sec_room = classrooms[i % len(classrooms)]
             
         for day in days:
             for p in periods:
@@ -80,7 +76,8 @@ def seed_timetable(db: Session):
                         semester=sem,
                         section="A",
                         slot_type=p["type"],
-                        period_number=p["num"]
+                        period_number=p["num"],
+                        academic_year=2026
                     ))
                     continue
 
@@ -103,7 +100,8 @@ def seed_timetable(db: Session):
                             semester=sem,
                             section="A",
                             slot_type=c.type,
-                            period_number=p["num"]
+                            period_number=p["num"],
+                            academic_year=2026
                         ))
                         faculty_grid[(day, p["num"])].add(fac_id)
                         room_grid[(day, p["num"])].add(room_id)
@@ -122,7 +120,8 @@ def seed_timetable(db: Session):
                         semester=sem,
                         section="A",
                         slot_type="Library Hour",
-                        period_number=p["num"]
+                        period_number=p["num"],
+                        academic_year=2026
                     ))
                     
     # Bulk save

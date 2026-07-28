@@ -43,7 +43,7 @@ def main():
         seed_academics(db)
         seed_students(db)
         seed_campus(db)
-        seed_events(db)
+        # seed_events(db)
         seed_timetable(db)
         
         print("SUCCESS: Database successfully seeded with realistic, zero-conflict data!")
