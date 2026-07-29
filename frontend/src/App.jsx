@@ -1,4 +1,33 @@
 import React, { useState, useEffect, useRef } from 'react';
+import {
+  LayoutDashboard,
+  Calendar,
+  Percent,
+  Compass,
+  Home,
+  Coffee,
+  Briefcase,
+  GraduationCap,
+  Trophy,
+  Bus,
+  MessageSquare,
+  Users,
+  Sparkles,
+  LogOut,
+  Bell,
+  Search,
+  ChevronRight,
+  Send,
+  ArrowRight,
+  CheckCircle,
+  AlertTriangle,
+  MapPin,
+  Clock,
+  ExternalLink,
+  BookOpen,
+  User,
+  Star
+} from 'lucide-react';
 import './index.css';
 
 const API = "http://127.0.0.1:8000/api/v1";
@@ -13,11 +42,18 @@ const apiFetch = async (url, opts = {}) => {
 const Stars = ({ rating }) => {
   const r = Math.round(rating * 2) / 2;
   return (
-    <span className="stars">
+    <span className="stars inline-flex items-center gap-0.5">
       {[1,2,3,4,5].map(i => (
-        <span key={i} style={{ color: i <= r ? '#f59e0b' : '#334155' }}>★</span>
+        <Star
+          key={i}
+          className="w-3 h-3"
+          style={{
+            fill: i <= r ? '#f59e0b' : 'none',
+            stroke: i <= r ? '#f59e0b' : '#475569'
+          }}
+        />
       ))}
-      <span style={{ marginLeft: 4, fontSize: 12, color: '#94a3b8' }}>{rating?.toFixed(1)}</span>
+      <span style={{ marginLeft: 4, fontSize: 11, color: '#94a3b8' }}>{rating?.toFixed(1)}</span>
     </span>
   );
 };
@@ -35,25 +71,26 @@ const Loading = () => (
 
 const EmptyState = ({ icon, msg }) => (
   <div className="empty-state">
+    {icon && <span className="empty-icon">{icon}</span>}
     <p>{msg}</p>
   </div>
 );
 
 // ─── Navigation items ─────────────────────────────────────────────────────────
 const NAV = [
-  { id: 'overview',    label: 'Overview',    icon: '🏠' },
-  { id: 'timetable',   label: 'Timetable',   icon: '📅' },
-  { id: 'attendance',  label: 'Attendance',  icon: '📊' },
-  { id: 'navigation',  label: 'Navigation',  icon: '🗺️' },
-  { id: 'hostel',      label: 'Hostel',      icon: '🏨' },
-  { id: 'cafeteria',   label: 'Cafeteria',   icon: '🍽️' },
-  { id: 'placement',   label: 'Placement',   icon: '💼' },
-  { id: 'exam',        label: 'Exams',       icon: '📚' },
-  { id: 'hackathon',   label: 'Hackathons',  icon: '🚀' },
-  { id: 'transport',   label: 'Transport',   icon: '🚌' },
-  { id: 'feedback',    label: 'Feedback',    icon: '📝' },
-  { id: 'alumni',      label: 'Alumni',      icon: '🤝' },
-  { id: 'assistant',   label: 'AI Assistant',icon: '🤖' },
+  { id: 'overview',    label: 'Overview',    icon: <LayoutDashboard className="w-4 h-4" /> },
+  { id: 'timetable',   label: 'Timetable',   icon: <Calendar className="w-4 h-4" /> },
+  { id: 'attendance',  label: 'Attendance',  icon: <Percent className="w-4 h-4" /> },
+  { id: 'navigation',  label: 'Navigation',  icon: <Compass className="w-4 h-4" /> },
+  { id: 'hostel',      label: 'Hostel',      icon: <Home className="w-4 h-4" /> },
+  { id: 'cafeteria',   label: 'Cafeteria',   icon: <Coffee className="w-4 h-4" /> },
+  { id: 'placement',   label: 'Placement',   icon: <Briefcase className="w-4 h-4" /> },
+  { id: 'exam',        label: 'Exams',       icon: <GraduationCap className="w-4 h-4" /> },
+  { id: 'hackathon',   label: 'Hackathons',  icon: <Trophy className="w-4 h-4" /> },
+  { id: 'transport',   label: 'Transport',   icon: <Bus className="w-4 h-4" /> },
+  { id: 'feedback',    label: 'Feedback',    icon: <MessageSquare className="w-4 h-4" /> },
+  { id: 'alumni',      label: 'Alumni',      icon: <Users className="w-4 h-4" /> },
+  { id: 'assistant',   label: 'AI Assistant',icon: <Sparkles className="w-4 h-4" /> },
 ];
 
 // ════════════════════════════════════════════════════════════════════════════════
@@ -91,7 +128,7 @@ function LoginPage({ onLogin }) {
       <div className="login-orb orb2"></div>
       <div className="login-card">
         <div className="login-logo">
-          <span className="logo-icon">🎓</span>
+          <Sparkles className="logo-icon w-8 h-8 text-indigo-400" />
           <div>
             <h1 className="login-title">Smart Campus AI</h1>
             <p className="login-sub">Multi-Agent Platform · 11 Agents</p>
@@ -125,7 +162,7 @@ function LoginPage({ onLogin }) {
           ))}
         </div>
         <div className="login-features">
-          {['🗺️ Navigation','🏨 Hostel','🍽️ Cafeteria','💼 Placement','📚 Exams','🚀 Hackathons','🚌 Transport','📝 Feedback','🤝 Alumni'].map(f => (
+          {['Navigation','Hostel','Cafeteria','Placement','Exams','Hackathons','Transport','Feedback','Alumni'].map(f => (
             <span key={f} className="feature-tag">{f}</span>
           ))}
         </div>
@@ -152,10 +189,10 @@ function Overview({ student }) {
   }, [student]);
 
   const cards = [
-    { label: 'Attendance', value: `${metrics?.pct||0}%`, sub: 'Overall', icon: '📊', color: 'green' },
-    { label: 'CGPA', value: student.cgpa?.toFixed(2), sub: 'Current', icon: '🎯', color: 'blue' },
-    { label: 'Courses', value: metrics?.courses||0, sub: 'Enrolled', icon: '📚', color: 'purple' },
-    { label: 'Semester', value: student.semester, sub: 'Current', icon: '🗓️', color: 'orange' },
+    { label: 'Attendance', value: `${metrics?.pct||0}%`, sub: 'Overall', icon: <Percent className="w-5 h-5 mx-auto mb-2 text-green-400" />, color: 'green' },
+    { label: 'CGPA', value: student.cgpa?.toFixed(2), sub: 'Current', icon: <GraduationCap className="w-5 h-5 mx-auto mb-2 text-blue-400" />, color: 'blue' },
+    { label: 'Courses', value: metrics?.courses||0, sub: 'Enrolled', icon: <BookOpen className="w-5 h-5 mx-auto mb-2 text-purple-400" />, color: 'purple' },
+    { label: 'Semester', value: student.semester, sub: 'Current', icon: <Calendar className="w-5 h-5 mx-auto mb-2 text-orange-400" />, color: 'orange' },
   ];
 
   return (
@@ -176,7 +213,10 @@ function Overview({ student }) {
       </div>
       <div className="two-col">
         <div className="card">
-          <h3 className="card-title">📅 Today's Schedule</h3>
+          <div className="card-header">
+            <Calendar className="w-4 h-4 text-indigo-400" />
+            <h3 className="card-title">Today's Schedule</h3>
+          </div>
           {schedule.length ? schedule.map((s,i) => (
             <div key={i} className="schedule-row">
               <div className="schedule-time">{s.start_time}</div>
@@ -185,10 +225,13 @@ function Overview({ student }) {
                 <div className="schedule-meta">{s.faculty?.name} · {s.classroom?.room_name}</div>
               </div>
             </div>
-          )) : <EmptyState icon="🎉" msg="No classes today!" />}
+          )) : <EmptyState icon={<Sparkles className="w-8 h-8 text-slate-500" />} msg="No classes today!" />}
         </div>
         <div className="card">
-          <h3 className="card-title">🤖 AI Agents Active</h3>
+          <div className="card-header">
+            <Sparkles className="w-4 h-4 text-purple-400" />
+            <h3 className="card-title">AI Agents Active</h3>
+          </div>
           <div className="agent-grid-sm">
             {['Timetable','Attendance','Navigation','Hostel','Cafeteria','Placement','Exams','Hackathons','Transport','Feedback','Alumni'].map(a => (
               <div key={a} className="agent-chip">
@@ -229,7 +272,10 @@ function Timetable({ student }) {
             ))}
           </div>
           <div className="card">
-            <h3 className="card-title">{day} Classes</h3>
+            <div className="card-header">
+              <Calendar className="w-4 h-4 text-indigo-400" />
+              <h3 className="card-title">{day} Classes</h3>
+            </div>
             {slots.length ? slots.map((s,i)=>(
               <div key={i} className="schedule-row">
                 <div className="schedule-time-block">
@@ -238,10 +284,14 @@ function Timetable({ student }) {
                 </div>
                 <div className="schedule-info">
                   <div className="schedule-course">{s.course?.name} <Badge text={s.course?.course_code} /></div>
-                  <div className="schedule-meta">👤 {s.faculty?.name} &nbsp;🏫 {s.classroom?.room_name} &nbsp;📍 {s.classroom?.building}</div>
+                  <div className="schedule-meta">
+                    <span className="schedule-meta-item"><User className="inline-block w-3.5 h-3.5 mr-1 align-text-bottom text-slate-400" />{s.faculty?.name}</span> &nbsp;&nbsp;
+                    <span className="schedule-meta-item"><Home className="inline-block w-3.5 h-3.5 mr-1 align-text-bottom text-slate-400" />{s.classroom?.room_name}</span> &nbsp;&nbsp;
+                    <span className="schedule-meta-item"><MapPin className="inline-block w-3.5 h-3.5 mr-1 align-text-bottom text-slate-400" />{s.classroom?.building}</span>
+                  </div>
                 </div>
               </div>
-            )) : <EmptyState icon="✨" msg="No classes scheduled for this day" />}
+            )) : <EmptyState icon={<Calendar className="w-8 h-8 text-slate-500" />} msg="No classes scheduled for this day" />}
           </div>
         </>
       )}
@@ -273,14 +323,22 @@ function Attendance({ student }) {
         <>
           <div className="metric-grid">
             <div className="metric-card metric-blue" style={{gridColumn:'span 2'}}>
-              <div className="metric-icon">📊</div>
+              <div className="metric-icon"><Percent className="w-5 h-5 mx-auto text-blue-400" /></div>
               <div className="metric-value">{overall}%</div>
               <div className="metric-label">Overall Attendance</div>
-              <div className="metric-sub">{overall >= 75 ? '✅ Safe — Above 75%' : '⚠️ At Risk — Below 75%'}</div>
+              <div className="metric-sub">
+                <span className="inline-flex items-center gap-1 justify-center w-full">
+                  {overall >= 75 ? (
+                    <><CheckCircle className="w-3.5 h-3.5 text-green-400" /> Safe — Above 75%</>
+                  ) : (
+                    <><AlertTriangle className="w-3.5 h-3.5 text-red-400" /> At Risk — Below 75%</>
+                  )}
+                </span>
+              </div>
             </div>
             {risk && (
               <div className={`metric-card ${risk.risk_level === 'High' ? 'metric-orange' : 'metric-green'}`} style={{gridColumn:'span 2'}}>
-                <div className="metric-icon">🧠</div>
+                <div className="metric-icon"><Sparkles className="w-5 h-5 mx-auto text-purple-400" /></div>
                 <div className="metric-value">{risk.risk_level || 'Low'}</div>
                 <div className="metric-label">ML Risk Level</div>
                 <div className="metric-sub">Random Forest Prediction</div>
@@ -288,7 +346,10 @@ function Attendance({ student }) {
             )}
           </div>
           <div className="card">
-            <h3 className="card-title">Course-wise Breakdown</h3>
+            <div className="card-header">
+              <BookOpen className="w-4 h-4 text-indigo-400" />
+              <h3 className="card-title">Course-wise Breakdown</h3>
+            </div>
             {courses.map((c,i) => (
               <div key={i} className="attendance-row">
                 <div className="att-info">
@@ -343,7 +404,10 @@ function Navigation({ student }) {
       <div className="page-header"><h2>Campus Navigation Agent</h2><p className="page-sub">A* pathfinding algorithm · Dijkstra shortest route</p></div>
       <div className="two-col">
         <div className="card">
-          <h3 className="card-title">🔍 Find Route</h3>
+          <div className="card-header">
+            <Search className="w-4 h-4 text-indigo-400" />
+            <h3 className="card-title">Find Route</h3>
+          </div>
           <div className="form-group">
             <label className="form-label">From Building</label>
             <select className="form-select" value={from} onChange={e=>setFrom(e.target.value)}>
@@ -366,14 +430,17 @@ function Navigation({ student }) {
               <div className="route-stat"><span className="route-val">{route.distance_estimate_meters}m</span><span className="route-sub">Distance</span></div>
               <div className="route-stat"><span className="route-val">{route.hops}</span><span className="route-sub">Hops</span></div>
               <div className="route-path">
-                <strong>Path:</strong> {route.path?.join(' → ')}
+                <strong>Path:</strong> {route.path?.join(' -> ')}
               </div>
               <Badge text={`Algorithm: ${route.algorithm}`} color="purple" />
             </div>
           )}
         </div>
         <div className="card">
-          <h3 className="card-title">🏛️ Campus Buildings</h3>
+          <div className="card-header">
+            <Home className="w-4 h-4 text-indigo-400" />
+            <h3 className="card-title">Campus Buildings</h3>
+          </div>
           {Object.entries(byType).map(([type, bs]) => (
             <div key={type}>
               <div className="building-type-label">{type.toUpperCase()}</div>
@@ -416,9 +483,9 @@ function Hostel({ student }) {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ student_id: student.student_id, complaint_text: complaintText })
       });
-      setMsg(`✅ ${res.message}`); setComplaintText('');
+      setMsg(res.message); setComplaintText('');
       apiFetch(`/hostel/complaints/${student.student_id}`).then(setComplaints).catch(()=>{});
-    } catch { setMsg('❌ Failed to submit complaint'); }
+    } catch { setMsg('Failed to submit complaint'); }
     finally { setSubmitting(false); }
   };
 
@@ -431,7 +498,10 @@ function Hostel({ student }) {
         <div>
           {info?.hostel_allocated ? (
             <div className="card">
-              <h3 className="card-title">🏠 Your Room</h3>
+              <div className="card-header">
+                <Home className="w-4 h-4 text-indigo-400" />
+                <h3 className="card-title">Your Room</h3>
+              </div>
               <div className="info-grid">
                 <div className="info-item"><div className="info-label">Hostel</div><div className="info-val">{info.hostel_name}</div></div>
                 <div className="info-item"><div className="info-label">Room</div><div className="info-val">{info.room_number} ({info.room_type})</div></div>
@@ -442,10 +512,13 @@ function Hostel({ student }) {
               </div>
             </div>
           ) : (
-            <div className="card"><EmptyState icon="🏠" msg="No hostel allocation found for your account" /></div>
+            <div className="card"><EmptyState icon={<Home className="w-8 h-8 text-slate-500" />} msg="No hostel allocation found for your account" /></div>
           )}
           <div className="card" style={{marginTop:16}}>
-            <h3 className="card-title">📋 File Complaint</h3>
+            <div className="card-header">
+              <MessageSquare className="w-4 h-4 text-indigo-400" />
+              <h3 className="card-title">File Complaint</h3>
+            </div>
             <textarea className="form-textarea" rows={3} placeholder="Describe your complaint (e.g. water leakage, broken light...)" value={complaintText} onChange={e=>setComplaintText(e.target.value)} />
             {msg && <p className="info-text">{msg}</p>}
             <button className="btn-primary" onClick={fileComplaint} disabled={submitting}>{submitting?'Submitting...':'Submit (Auto-Classify)'}</button>
@@ -464,14 +537,17 @@ function Hostel({ student }) {
           </div>
         </div>
         <div className="card">
-          <h3 className="card-title">🍽️ Today's Mess Menu</h3>
+          <div className="card-header">
+            <Coffee className="w-4 h-4 text-indigo-400" />
+            <h3 className="card-title">Today's Mess Menu</h3>
+          </div>
           {dayMenu.length ? dayMenu.map((m,i)=>(
             <div key={i} className="menu-row">
               <div className="menu-meal"><Badge text={m.meal_type} color="blue" /></div>
               <div className="menu-items">{m.items}</div>
               {m.calories_approx && <div className="menu-cal">~{m.calories_approx} cal</div>}
             </div>
-          )) : <EmptyState icon="🍽️" msg="Menu not available today" />}
+          )) : <EmptyState icon={<Coffee className="w-8 h-8 text-slate-500" />} msg="Menu not available today" />}
         </div>
       </div>
     </div>
@@ -500,7 +576,7 @@ function Cafeteria({ student }) {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ student_id: student.student_id, food_item_id: itemId, rating })
       });
-      setRatingMsg(`⭐ Rated ${rating}/5 — Thanks!`);
+      setRatingMsg(`Rated ${rating}/5 — Thanks!`);
       setTimeout(()=>setRatingMsg(''), 3000);
     } catch { setRatingMsg('Failed to submit rating'); }
   };
@@ -513,12 +589,15 @@ function Cafeteria({ student }) {
       {ratingMsg && <div className="toast">{ratingMsg}</div>}
       <div className="two-col">
         <div className="card">
-          <h3 className="card-title">🤖 AI Recommendations for You</h3>
+          <div className="card-header">
+            <Sparkles className="w-4 h-4 text-indigo-400" />
+            <h3 className="card-title">Recommendations for You</h3>
+          </div>
           {recs.slice(0,6).map((item,i)=>(
             <div key={i} className="food-card">
               <div className="food-header">
                 <div>
-                  <div className="food-name">{item.name} {item.is_veg ? '🟢' : '🔴'}</div>
+                  <div className="food-name">{item.name} &nbsp; <Badge text={item.is_veg ? 'Veg' : 'Non-Veg'} color={item.is_veg ? 'green' : 'red'} /></div>
                   <div className="food-meta">{item.cuisine} · {item.category} · ₹{item.price}</div>
                 </div>
                 <div>
@@ -536,7 +615,10 @@ function Cafeteria({ student }) {
           ))}
         </div>
         <div className="card">
-          <h3 className="card-title">📋 Today's Menu</h3>
+          <div className="card-header">
+            <Coffee className="w-4 h-4 text-indigo-400" />
+            <h3 className="card-title">Today's Menu</h3>
+          </div>
           {['Breakfast','Lunch','Snacks','Dinner'].map(slot => {
             const items = menu.filter(m=>m.meal_slot===slot);
             return items.length ? (
@@ -544,7 +626,7 @@ function Cafeteria({ student }) {
                 <div className="menu-slot-label"><Badge text={slot} color="blue" /></div>
                 {items.slice(0,3).map((m,i)=>(
                   <div key={i} className="menu-item-row">
-                    <span>{m.name} {m.is_veg?'🟢':'🔴'}</span>
+                    <span>{m.name} &nbsp; <Badge text={m.is_veg ? 'Veg' : 'Non-Veg'} color={m.is_veg ? 'green' : 'red'} /></span>
                     <span className="menu-price">₹{m.price}</span>
                   </div>
                 ))}
@@ -604,7 +686,10 @@ function Placement({ student }) {
       {tab==='profile' && profile && (
         <div className="two-col">
           <div className="card">
-            <h3 className="card-title">📊 Readiness Score</h3>
+            <div className="card-header">
+              <Percent className="w-4 h-4 text-indigo-400" />
+              <h3 className="card-title">Readiness Score</h3>
+            </div>
             <div className="score-ring-wrap">
               <div className="score-ring" style={{'--score': score}}>
                 <div className="score-inner">
@@ -623,7 +708,10 @@ function Placement({ student }) {
             </div>
           </div>
           <div className="card">
-            <h3 className="card-title">🛠️ Your Skills ({profile.skill_count})</h3>
+            <div className="card-header">
+              <Briefcase className="w-4 h-4 text-indigo-400" />
+              <h3 className="card-title">Your Skills ({profile.skill_count})</h3>
+            </div>
             <div className="skill-tags">
               {profile.skills?.map(s=>(
                 <span key={s.name} className={`skill-tag skill-${s.proficiency.toLowerCase()}`}>{s.name}</span>
@@ -640,7 +728,10 @@ function Placement({ student }) {
       )}
       {tab==='companies' && (
         <div className="card">
-          <h3 className="card-title">🏢 Matched Companies ({companies.length})</h3>
+          <div className="card-header">
+            <Home className="w-4 h-4 text-indigo-400" />
+            <h3 className="card-title">Matched Companies ({companies.length})</h3>
+          </div>
           {companies.map((c,i)=>(
             <div key={i} className="company-row">
               <div className="company-header">
@@ -651,21 +742,24 @@ function Placement({ student }) {
                 <div className="company-score">{c.match_score}%<div className="company-score-sub">match</div></div>
               </div>
               {c.matched_skills?.length>0 && <div className="skill-tags">{c.matched_skills.map(s=><span key={s} className="skill-tag skill-advanced">{s}</span>)}</div>}
-              {c.missing_skills?.length>0 && <div className="missing-label">📚 Learn: {c.missing_skills.join(', ')}</div>}
+              {c.missing_skills?.length>0 && <div className="missing-label">Learn: {c.missing_skills.join(', ')}</div>}
             </div>
           ))}
         </div>
       )}
       {tab==='interview' && (
         <div className="card">
-          <h3 className="card-title">🎤 Interview Q&amp;A</h3>
+          <div className="card-header">
+            <MessageSquare className="w-4 h-4 text-indigo-400" />
+            <h3 className="card-title">Interview Q&amp;A</h3>
+          </div>
           <div className="topic-row">
             {TOPICS.map(t=><button key={t} className={`topic-btn ${qTopic===t?'active':''}`} onClick={()=>setQTopic(t)}>{t}</button>)}
           </div>
           {questions.map((q,i)=>(
             <div key={i} className="qa-card">
               <div className="qa-q"><Badge text={q.difficulty} color={q.difficulty==='Easy'?'green':q.difficulty==='Medium'?'orange':'red'} /> {q.question}</div>
-              <div className="qa-a">💡 {q.answer}</div>
+              <div className="qa-a">{q.answer}</div>
             </div>
           ))}
         </div>
@@ -673,13 +767,19 @@ function Placement({ student }) {
       {tab==='skills' && gap && (
         <div className="two-col">
           <div className="card">
-            <h3 className="card-title">✅ Skills You Have</h3>
+            <div className="card-header">
+              <CheckCircle className="w-4 h-4 text-green-400" />
+              <h3 className="card-title">Skills You Have</h3>
+            </div>
             {gap.skills_you_have?.map((s,i)=>(
               <div key={i} className="gap-row"><span className="gap-skill">{s.name}</span><Badge text={`${s.demand_count} companies`} color="green" /></div>
             ))}
           </div>
           <div className="card">
-            <h3 className="card-title">📚 Skills to Learn</h3>
+            <div className="card-header">
+              <BookOpen className="w-4 h-4 text-orange-400" />
+              <h3 className="card-title">Skills to Learn</h3>
+            </div>
             <p className="section-sub">Completion: {gap.completion_pct}%</p>
             {gap.skills_to_learn?.map((s,i)=>(
               <div key={i} className="gap-row"><span className="gap-skill">{s.name}</span><Badge text={`${s.demand_count} companies`} color="red" /></div>
@@ -723,7 +823,10 @@ function Exam({ student }) {
       {tab==='schedule' && (
         <div className="two-col">
           <div className="card">
-            <h3 className="card-title">⏰ Upcoming ({schedule?.total_upcoming||0})</h3>
+            <div className="card-header">
+              <Clock className="w-4 h-4 text-indigo-400" />
+              <h3 className="card-title">Upcoming ({schedule?.total_upcoming||0})</h3>
+            </div>
             {schedule?.upcoming_exams?.slice(0,6).map((e,i)=>(
               <div key={i} className="exam-row">
                 <div className="exam-date-block">
@@ -732,14 +835,19 @@ function Exam({ student }) {
                 </div>
                 <div className="exam-info">
                   <div className="exam-course">{e.course_name} <Badge text={e.exam_type} color={e.exam_type==='EndSem'?'red':'blue'} /></div>
-                  <div className="exam-meta">🏛️ {e.venue} · {e.start_time}–{e.end_time}</div>
+                  <div className="exam-meta">
+                    <span className="exam-meta-item"><Home className="inline-block w-3.5 h-3.5 mr-1 align-text-bottom text-slate-400" />{e.venue}</span> &nbsp;·&nbsp; {e.start_time}–{e.end_time}
+                  </div>
                   <div className={`days-left ${e.days_left<=3?'urgent':e.days_left<=7?'soon':''}`}>{e.days_left} days left</div>
                 </div>
               </div>
             ))}
           </div>
           <div className="card">
-            <h3 className="card-title">✅ Completed Exams</h3>
+            <div className="card-header">
+              <CheckCircle className="w-4 h-4 text-green-400" />
+              <h3 className="card-title">Completed Exams</h3>
+            </div>
             {schedule?.past_exams?.slice(0,6).map((e,i)=>(
               <div key={i} className="exam-row past">
                 <div className="exam-course">{e.course_name} <Badge text={e.exam_type} /></div>
@@ -751,7 +859,10 @@ function Exam({ student }) {
       )}
       {tab==='tickets' && (
         <div className="card">
-          <h3 className="card-title">🎫 Hall Tickets ({tickets?.hall_tickets?.length||0})</h3>
+          <div className="card-header">
+            <GraduationCap className="w-4 h-4 text-indigo-400" />
+            <h3 className="card-title">Hall Tickets ({tickets?.hall_tickets?.length||0})</h3>
+          </div>
           <div className="hall-ticket-header">
             <div>Student: <strong>{tickets?.name}</strong> · {tickets?.department} · Sem {tickets?.semester}</div>
           </div>
@@ -761,7 +872,9 @@ function Exam({ student }) {
               <div className="ticket-info">
                 <div><strong>{t.course}</strong> ({t.course_code})</div>
                 <div>{t.exam_type} · {t.date} · {t.time}</div>
-                <div>🏛️ {t.venue} · Seat: <strong>{t.seat_number}</strong></div>
+                <div>
+                  <Home className="inline-block w-3.5 h-3.5 mr-1 align-text-bottom text-slate-400" />{t.venue} &nbsp;·&nbsp; Seat: <strong>{t.seat_number}</strong>
+                </div>
               </div>
               <Badge text={t.is_issued?'Issued':'Pending'} color={t.is_issued?'green':'red'} />
             </div>
@@ -770,7 +883,10 @@ function Exam({ student }) {
       )}
       {tab==='results' && (
         <div className="card">
-          <h3 className="card-title">📈 Results · Overall: {results?.overall_percentage}%</h3>
+          <div className="card-header">
+            <Percent className="w-4 h-4 text-indigo-400" />
+            <h3 className="card-title">Results · Overall: {results?.overall_percentage}%</h3>
+          </div>
           {results?.results?.map((r,i)=>(
             <div key={i} className="result-row">
               <div>
@@ -816,9 +932,9 @@ function Hackathon({ student }) {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ student_id: student.student_id, hackathon_id: hackathonId })
       });
-      setMsg(`✅ Registered for "${title}"`);
+      setMsg(`Registered for "${title}"`);
       loadData();
-    } catch (e) { setMsg('❌ Already registered or error'); }
+    } catch (e) { setMsg('Already registered or error'); }
     setTimeout(()=>setMsg(''), 4000);
   };
 
@@ -836,9 +952,11 @@ function Hackathon({ student }) {
       <div className="hack-theme">{h.theme}</div>
       <div className="hack-tags">{h.skill_tags?.map(t=><Badge key={t} text={t} color="purple" />)}</div>
       <div className="hack-footer">
-        <span>🏆 {h.prize_pool}</span>
-        <span>👥 {h.team_size}</span>
-        <span className={h.deadline_days_left<=7?'urgent-text':''}>📅 {h.registration_deadline} {h.deadline_days_left!==null && `(${h.deadline_days_left}d left)`}</span>
+        <span><Trophy className="inline-block w-3.5 h-3.5 mr-1 align-text-bottom text-amber-500" />{h.prize_pool}</span>
+        <span><Users className="inline-block w-3.5 h-3.5 mr-1 align-text-bottom text-slate-400" />{h.team_size}</span>
+        <span className={h.deadline_days_left<=7?'urgent-text':''}>
+          <Calendar className="inline-block w-3.5 h-3.5 mr-1 align-text-bottom text-slate-400" />{h.registration_deadline} {h.deadline_days_left!==null && `(${h.deadline_days_left}d left)`}
+        </span>
       </div>
       {showReg && <button className="btn-sm" onClick={()=>register(h.id, h.title)}>Register</button>}
     </div>
@@ -849,7 +967,7 @@ function Hackathon({ student }) {
       <div className="page-header"><h2>Hackathon Recommendation Agent</h2><p className="page-sub">Jaccard Similarity · Content-Based Filtering</p></div>
       {msg && <div className="toast">{msg}</div>}
       <div className="tab-row">
-        {[['recommended','🤖 For You'],['all','🌐 All'],['registered','✅ Registered']].map(([t,l])=>(
+        {[['recommended','For You'],['all','All'],['registered','Registered']].map(([t,l])=>(
           <button key={t} className={`tab-btn ${tab===t?'active':''}`} onClick={()=>setTab(t)}>{l}</button>
         ))}
       </div>
@@ -859,12 +977,12 @@ function Hackathon({ student }) {
         {tab==='registered' && registered.map((h,i)=>(
           <div key={i} className="hack-card registered">
             <HackCard h={h} showReg={false} />
-            {h.team_name && <div className="team-tag">👥 Team: {h.team_name}</div>}
+            {h.team_name && <div className="team-tag">Team: {h.team_name}</div>}
             {h.result && <Badge text={h.result} color={h.result==='Winner'?'green':'blue'} />}
           </div>
         ))}
         {(tab==='recommended'&&!recs.length)||(tab==='all'&&!all.length)||(tab==='registered'&&!registered.length) ?
-          <EmptyState icon="🚀" msg="No hackathons found" /> : null}
+          <EmptyState icon={<Trophy className="w-8 h-8 text-slate-500" />} msg="No hackathons found" /> : null}
       </div>
     </div>
   );
@@ -900,7 +1018,10 @@ function Transport({ student }) {
       <div className="page-header"><h2>Transport Information Agent</h2><p className="page-sub">Exponential Smoothing delay prediction · Dijkstra route planning</p></div>
       <div className="two-col">
         <div className="card">
-          <h3 className="card-title">🚌 Campus Buses</h3>
+          <div className="card-header">
+            <Bus className="w-4 h-4 text-indigo-400" />
+            <h3 className="card-title">Campus Buses</h3>
+          </div>
           {buses.map((bus,i)=>(
             <div key={i} className={`bus-row ${selected?.bus_number===bus.bus_number?'selected':''}`} onClick={()=>selectBus(bus)}>
               <div className="bus-number">{bus.bus_number}</div>
@@ -914,7 +1035,10 @@ function Transport({ student }) {
         <div>
           {delay && (
             <div className={`card delay-card ${delay.predicted_delay_minutes > 10 ? 'delay-high' : delay.predicted_delay_minutes > 2 ? 'delay-med' : 'delay-low'}`}>
-              <h3 className="card-title">⏱️ Delay Prediction — {selected?.bus_number}</h3>
+              <div className="card-header" style={{justifyContent: 'center'}}>
+                <Clock className="w-4 h-4 text-indigo-400" />
+                <h3 className="card-title">Delay Prediction — {selected?.bus_number}</h3>
+              </div>
               <div className="delay-val">{delay.predicted_delay_minutes} min</div>
               <Badge text={delay.status} color={delay.predicted_delay_minutes<=2?'green':delay.predicted_delay_minutes<=10?'orange':'red'} />
               <div className="delay-meta">Avg: {delay.historical_avg_delay} min · Reason: {delay.common_reason} · {delay.confidence} confidence</div>
@@ -922,7 +1046,10 @@ function Transport({ student }) {
           )}
           {stops && (
             <div className="card" style={{marginTop:16}}>
-              <h3 className="card-title">📍 Route Stops — {selected?.bus_number}</h3>
+              <div className="card-header">
+                <MapPin className="w-4 h-4 text-indigo-400" />
+                <h3 className="card-title">Route Stops — {selected?.bus_number}</h3>
+              </div>
               {stops.stops?.map((s,i)=>(
                 <div key={i} className="stop-row">
                   <div className="stop-num">{s.order}</div>
@@ -934,7 +1061,7 @@ function Transport({ student }) {
               ))}
             </div>
           )}
-          {!selected && <EmptyState icon="🚌" msg="Select a bus to see stops and delay prediction" />}
+          {!selected && <EmptyState icon={<Bus className="w-8 h-8 text-slate-500" />} msg="Select a bus to see stops and delay prediction" />}
         </div>
       </div>
     </div>
@@ -965,10 +1092,10 @@ function Feedback({ student }) {
         body: JSON.stringify({ student_id: student.student_id, form_id: 1, rating, feedback_text: text })
       });
       setSentiment(res.sentiment);
-      setMsg(`✅ Submitted! Sentiment detected: ${res.sentiment} (score: ${res.sentiment_score?.toFixed(2)})`);
+      setMsg(`Submitted! Sentiment detected: ${res.sentiment} (score: ${res.sentiment_score?.toFixed(2)})`);
       setText(''); setRating(4);
       apiFetch('/feedback/summary').then(setSummary).catch(()=>{});
-    } catch { setMsg('❌ Failed to submit'); }
+    } catch { setMsg('Failed to submit'); }
     finally { setSubmitting(false); }
   };
 
@@ -990,14 +1117,17 @@ function Feedback({ student }) {
             <label className="form-label">Your Feedback</label>
             <textarea className="form-textarea" rows={4} placeholder="Write your feedback about faculty, courses, facilities..." value={text} onChange={e=>setText(e.target.value)} />
           </div>
-          {msg && <div className={`info-text ${msg.startsWith('✅')?'success-text':''}`}>{msg}</div>}
+          {msg && <div className={`info-text ${msg.startsWith('Submitted')?'success-text':''}`}>{msg}</div>}
           <button className="btn-primary" onClick={submitFeedback} disabled={submitting}>{submitting?'Analyzing...':'Submit & Analyze Sentiment'}</button>
         </div>
         {summary && (
           <div className="card">
-            <h3 className="card-title">📊 Platform Analytics</h3>
+            <div className="card-header">
+              <Percent className="w-4 h-4 text-indigo-400" />
+              <h3 className="card-title">Platform Analytics</h3>
+            </div>
             <div className="metric-card metric-blue" style={{marginBottom:12}}>
-              <div className="metric-value">{summary.avg_platform_rating?.toFixed(1)} ⭐</div>
+              <div className="metric-value">{summary.avg_platform_rating?.toFixed(1)} / 5.0</div>
               <div className="metric-label">Platform Rating</div>
               <div className="metric-sub">{summary.total_responses} responses · {summary.overall_health}</div>
             </div>
@@ -1012,7 +1142,7 @@ function Feedback({ student }) {
             </div>
             {summary.top_rated_faculty?.length > 0 && (
               <div style={{marginTop:12}}>
-                <div className="section-sub">⭐ Top Rated Faculty</div>
+                <div className="section-sub">Top Rated Faculty</div>
                 {summary.top_rated_faculty.map((f,i)=>(
                   <div key={i} className="faculty-row">
                     <span>{f.name}</span>
@@ -1056,9 +1186,9 @@ function Alumni({ student }) {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ student_id: student.student_id, alumni_id: alumniId, message: 'Hi, I would love to connect and learn from your experience!', goal: 'Career Guidance' })
       });
-      setMsg(`✅ Mentorship request sent to ${name}`);
+      setMsg(`Mentorship request sent to ${name}`);
       loadData();
-    } catch { setMsg('❌ Request already pending or error'); }
+    } catch { setMsg('Request already pending or error'); }
     setTimeout(()=>setMsg(''), 4000);
   };
 
@@ -1071,7 +1201,7 @@ function Alumni({ student }) {
         <div className="alumni-name">{a.name}</div>
         <div className="alumni-role">{a.current_role} @ {a.current_company}</div>
         <div className="alumni-dept">{a.department} · {a.graduation_year} · {a.experience_years} yrs exp</div>
-        {a.match_score !== undefined && <div className="alumni-match">🎯 {a.match_score}% match · Skill: {a.skill_match_pct}%</div>}
+        {a.match_score !== undefined && <div className="alumni-match">Match score: {a.match_score}% · Skill match: {a.skill_match_pct}%</div>}
         <div className="alumni-skills">{a.skills?.slice(0,4).map(s=><Badge key={s} text={s} color="purple" />)}</div>
         {a.expertise_areas?.slice(0,3).map(e=><Badge key={e} text={e} />)}
       </div>
@@ -1084,7 +1214,7 @@ function Alumni({ student }) {
       <div className="page-header"><h2>Alumni Connect Agent</h2><p className="page-sub">KNN matching · Cosine Similarity on skill vectors</p></div>
       {msg && <div className="toast">{msg}</div>}
       <div className="tab-row">
-        {[['recommended','🤖 Recommended'],['all','🎓 All Alumni'],['mentors','✅ My Mentors']].map(([t,l])=>(
+        {[['recommended','Recommended'],['all','All Alumni'],['mentors','My Mentors']].map(([t,l])=>(
           <button key={t} className={`tab-btn ${tab===t?'active':''}`} onClick={()=>setTab(t)}>{l}</button>
         ))}
       </div>
@@ -1098,7 +1228,7 @@ function Alumni({ student }) {
             <div className="mentor-meta">Goal: {m.goal} · <Badge text={m.status} color={m.status==='Accepted'?'green':m.status==='Pending'?'orange':'red'} /></div>
           </div>
         ))}
-        {!recs.length&&tab==='recommended' ? <EmptyState icon="🤝" msg="No mentor matches. Add skills in Placement first." /> : null}
+        {!recs.length&&tab==='recommended' ? <EmptyState icon={<Users className="w-8 h-8 text-slate-500" />} msg="No mentor matches. Add skills in Placement first." /> : null}
       </div>
     </div>
   );
@@ -1168,7 +1298,9 @@ function Assistant({ student }) {
             onChange={e=>setInput(e.target.value)}
             onKeyDown={e=>e.key==='Enter'&&send()}
           />
-          <button className="btn-send" onClick={()=>send()} disabled={loading}>➤</button>
+          <button className="btn-send" onClick={()=>send()} disabled={loading} aria-label="Send message">
+            <Send className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </div>
@@ -1201,11 +1333,20 @@ function App() {
     assistant:  <Assistant  student={student} />,
   };
 
+  const currentNav = NAV.find(n => n.id === active);
+  const pageTitle = currentNav ? currentNav.label : 'Overview';
+  const currentDate = new Date().toLocaleDateString('en-US', {
+    weekday: 'short',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
+
   return (
     <div className={`dashboard ${collapsed ? 'sidebar-collapsed' : ''}`}>
       <aside className="sidebar">
         <div className="sidebar-logo" onClick={()=>setCollapsed(c=>!c)}>
-          <span className="logo-mark">🎓</span>
+          <GraduationCap className="logo-mark text-indigo-400 w-5 h-5" />
           {!collapsed && <span className="logo-text">Smart Campus</span>}
         </div>
         <div className="sidebar-profile">
@@ -1231,11 +1372,40 @@ function App() {
           ))}
         </nav>
         <button className="sidebar-logout" onClick={()=>setStudent(null)} title="Logout">
-          <span>🚪</span>{!collapsed && ' Logout'}
+          <LogOut className="w-4 h-4" />{!collapsed && ' Logout'}
         </button>
       </aside>
       <main className="main-content">
-        {pages[active] || <Overview student={student} />}
+        <header className="top-bar">
+          <div className="top-bar-left">
+            <div className="breadcrumbs">
+              <span>Smart Campus</span>
+              <ChevronRight className="w-3.5 h-3.5 separator" />
+              <span className="current">{pageTitle}</span>
+            </div>
+            <h1 className="top-bar-title">{pageTitle}</h1>
+          </div>
+          <div className="top-bar-right">
+            <div className="top-bar-search">
+              <Search className="w-4 h-4 search-icon" />
+              <input type="text" placeholder="Quick search..." className="search-input" readOnly />
+            </div>
+            <div className="top-bar-date">
+              <Calendar className="w-4 h-4 text-slate-400" />
+              <span>{currentDate}</span>
+            </div>
+            <button className="icon-btn notification-btn" aria-label="Notifications">
+              <Bell className="w-4 h-4" />
+              <span className="badge-dot"></span>
+            </button>
+            <div className="top-bar-avatar" title={student.name}>
+              {student.name.charAt(0)}
+            </div>
+          </div>
+        </header>
+        <div className="content-inner">
+          {pages[active] || <Overview student={student} />}
+        </div>
       </main>
     </div>
   );
