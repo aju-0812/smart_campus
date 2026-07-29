@@ -26,6 +26,7 @@ import {
   ExternalLink,
   BookOpen,
   User,
+  Lock,
   Star
 } from 'lucide-react';
 import './index.css';
@@ -102,7 +103,13 @@ function LoginPage({ onLogin }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const QUICK = ['S100001','S100025','S100100','S100200','S100500'];
+  const QUICK_PROFILES = [
+    { id: 'S100001', sem: 3, label: 'AI & Data Science' },
+    { id: 'S100025', sem: 4, label: 'Computer Science' },
+    { id: 'S100100', sem: 2, label: 'Physics' },
+    { id: 'S100200', sem: 4, label: 'Mathematics' },
+    { id: 'S100500', sem: 8, label: 'Business Administration (MBA)' }
+  ];
 
   const handleLogin = async (id) => {
     const studentId = id || sid.trim();
@@ -127,44 +134,105 @@ function LoginPage({ onLogin }) {
       <div className="login-orb orb1"></div>
       <div className="login-orb orb2"></div>
       <div className="login-card">
-        <div className="login-logo">
-          <Sparkles className="logo-icon w-8 h-8 text-indigo-400" />
-          <div>
-            <h1 className="login-title">Smart Campus AI</h1>
-            <p className="login-sub">Multi-Agent Platform · 11 Agents</p>
+        <div className="login-header">
+          <div className="login-logo-container">
+            <Sparkles className="logo-icon w-10 h-10" />
+          </div>
+          <h1 className="login-title">Smart Campus AI</h1>
+          <p className="login-subtitle">Autonomous Multi-Agent University Platform</p>
+          <div className="login-tech-line">
+            <span>FastAPI</span>
+            <span className="dot">•</span>
+            <span>LangGraph</span>
+            <span className="dot">•</span>
+            <span>React</span>
           </div>
         </div>
-        <p className="login-desc">Powered by LangGraph · FastAPI · React</p>
-        <div className="login-input-row">
-          <input
-            className="login-input"
-            placeholder="Enter Student ID (e.g. S100001)"
-            value={sid}
-            onChange={e => setSid(e.target.value)}
-          />
-          <input
-            className="login-input"
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleLogin()}
-          />
-          <button className="btn-primary" onClick={() => handleLogin()} disabled={loading}>
-            {loading ? '...' : 'Login →'}
+
+        <div className="login-fields">
+          <div className="input-group">
+            <User className="input-icon w-4 h-4" />
+            <input
+              type="text"
+              className="login-input"
+              placeholder="Enter Student ID (e.g. S100001)"
+              value={sid}
+              onChange={e => setSid(e.target.value)}
+              aria-label="Student ID"
+            />
+          </div>
+          <div className="input-group">
+            <Lock className="input-icon w-4 h-4" />
+            <input
+              type="password"
+              className="login-input"
+              placeholder="Enter password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleLogin()}
+              aria-label="Password"
+            />
+          </div>
+          {error && (
+            <p className="login-error">
+              <AlertTriangle className="w-4 h-4 text-red-400" />
+              <span>{error}</span>
+            </p>
+          )}
+          <button className="btn-primary login-btn" onClick={() => handleLogin()} disabled={loading}>
+            {loading ? (
+              <span className="loading-spinner"></span>
+            ) : (
+              'Sign In'
+            )}
           </button>
         </div>
-        {error && <p className="login-error">{error}</p>}
-        <div className="quick-label">Quick access</div>
-        <div className="quick-chips">
-          {QUICK.map(id => (
-            <button key={id} className="chip" onClick={() => handleLogin(id)}>{id}</button>
-          ))}
+
+        <div className="login-features-list">
+          <div className="feature-item">
+            <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+            <span>AI Assistant</span>
+          </div>
+          <div className="feature-item">
+            <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Attendance Analytics</span>
+          </div>
+          <div className="feature-item">
+            <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Smart Timetable</span>
+          </div>
+          <div className="feature-item">
+            <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Placement Intelligence</span>
+          </div>
+          <div className="feature-item" style={{ gridColumn: 'span 2' }}>
+            <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Campus Navigation & 11 Specialized Agents</span>
+          </div>
         </div>
-        <div className="login-features">
-          {['Navigation','Hostel','Cafeteria','Placement','Exams','Hackathons','Transport','Feedback','Alumni'].map(f => (
-            <span key={f} className="feature-tag">{f}</span>
-          ))}
+
+        <div className="quick-access-section">
+          <div className="quick-label">Quick access accounts</div>
+          <div className="quick-grid">
+            {QUICK_PROFILES.map(prof => (
+              <button 
+                key={prof.id} 
+                className="quick-card" 
+                onClick={() => handleLogin(prof.id)}
+                title={`Log in as ${prof.id}`}
+              >
+                <div className="quick-card-header">
+                  <span className="quick-id">{prof.id}</span>
+                  <span className="quick-sem">Sem {prof.sem}</span>
+                </div>
+                <div className="quick-dept">{prof.label}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="login-footer">
+          <p>Secure Single Sign-On • Smart Campus</p>
         </div>
       </div>
     </div>
