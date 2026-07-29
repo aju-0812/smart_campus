@@ -1314,6 +1314,74 @@ function App() {
   const [student, setStudent] = useState(null);
   const [active, setActive] = useState('overview');
   const [collapsed, setCollapsed] = useState(false);
+  const [notifications, setNotifications] = useState([
+    { id: 1, text: "Upcoming Exam Tomorrow", read: false, time: "1 hour ago" },
+    { id: 2, text: "Attendance dropped below 80%", read: false, time: "2 hours ago" },
+    { id: 3, text: "Hackathon Registration closes today", read: false, time: "4 hours ago" },
+    { id: 4, text: "Bus delayed by 10 minutes", read: true, time: "1 day ago" },
+    { id: 5, text: "Placement interview scheduled", read: true, time: "2 days ago" },
+    { id: 6, text: "New cafeteria menu available", read: true, time: "3 days ago" },
+  ]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Close notifications on click outside
+  useEffect(() => {
+    if (!showNotifications) return;
+    const handleOutsideClick = (e) => {
+      if (!e.target.closest('.notification-wrap')) {
+        setShowNotifications(false);
+      }
+    };
+    document.addEventListener('click', handleOutsideClick);
+    return () => document.removeEventListener('click', handleOutsideClick);
+  }, [showNotifications]);
+
+  // Clear search on active page changes
+  useEffect(() => {
+    setSearchQuery('');
+  }, [active]);
+
+  const toggleRead = (id) => {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: !n.read } : n));
+  };
+
+  const markAllRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
+
+  const SEARCH_MAPPINGS = [
+    { id: 'overview',    keywords: ['overview', 'dashboard', 'home', 'main'] },
+    { id: 'timetable',   keywords: ['timetable', 'schedule', 'class', 'classes', 'today'] },
+    { id: 'attendance',  keywords: ['attendance', 'present', 'absent', 'percentage', 'risk', 'atten'] },
+    { id: 'navigation',  keywords: ['navigation', 'map', 'route', 'building', 'buildings', 'campus', 'nav'] },
+    { id: 'hostel',      keywords: ['hostel', 'room', 'mess', 'warden', 'complaint', 'host'] },
+    { id: 'cafeteria',   keywords: ['cafeteria', 'canteen', 'food', 'veg', 'menu', 'cafe'] },
+    { id: 'placement',   keywords: ['placement', 'jobs', 'careers', 'companies', 'readiness', 'skills', 'plac'] },
+    { id: 'exam',        keywords: ['exams', 'exam', 'results', 'hall ticket', 'ticket', 'grade'] },
+    { id: 'hackathon',   keywords: ['hackathons', 'hackathon', 'recommend', 'recs', 'platform', 'team', 'reg'] },
+    { id: 'transport',   keywords: ['transport', 'bus', 'buses', 'route', 'delay', 'driver', 'trans'] },
+    { id: 'feedback',    keywords: ['feedback', 'rating', 'sentiment', 'faculty', 'textblob'] },
+    { id: 'alumni',      keywords: ['alumni', 'mentor', 'mentors', 'mentorship', 'connect', 'graduation'] },
+    { id: 'assistant',   keywords: ['ai assistant', 'assistant', 'chat', 'chatbot', 'ai', 'graph', 'orchestrator'] },
+  ];
+
+  const handleSearchChange = (e) => {
+    const val = e.target.value;
+    setSearchQuery(val);
+    const query = val.toLowerCase().trim();
+    if (!query) return;
+
+    const matched = SEARCH_MAPPINGS.find(m => 
+      m.id.includes(query) ||
+      NAV.find(n => n.id === m.id)?.label.toLowerCase().includes(query) ||
+      m.keywords.some(k => k.startsWith(query) || query.startsWith(k))
+    );
+
+    if (matched) {
+      setActive(matched.id);
+    }
+  };
 
   if (!student) return <LoginPage onLogin={setStudent} />;
 
@@ -1388,16 +1456,57 @@ function App() {
           <div className="top-bar-right">
             <div className="top-bar-search">
               <Search className="w-4 h-4 search-icon" />
-              <input type="text" placeholder="Quick search..." className="search-input" readOnly />
+              <input 
+                type="text" 
+                placeholder="Quick search..." 
+                className="search-input" 
+                value={searchQuery}
+                onChange={handleSearchChange}
+              />
             </div>
             <div className="top-bar-date">
               <Calendar className="w-4 h-4 text-slate-400" />
               <span>{currentDate}</span>
             </div>
-            <button className="icon-btn notification-btn" aria-label="Notifications">
-              <Bell className="w-4 h-4" />
-              <span className="badge-dot"></span>
-            </button>
+            <div className="notification-wrap">
+              <button 
+                className="icon-btn notification-btn" 
+                aria-label="Notifications"
+                onClick={() => setShowNotifications(!showNotifications)}
+              >
+                <Bell className="w-4 h-4" />
+                {notifications.some(n => !n.read) && <span className="badge-dot"></span>}
+              </button>
+              {showNotifications && (
+                <div className="notification-dropdown">
+                  <div className="dropdown-header">
+                    <h4>Notifications</h4>
+                    {notifications.some(n => !n.read) && (
+                      <button className="mark-all-read" onClick={markAllRead}>
+                        Mark all as read
+                      </button>
+                    )}
+                  </div>
+                  <div className="dropdown-body">
+                    {notifications.length === 0 ? (
+                      <div className="empty-notifications">No alerts</div>
+                    ) : (
+                      notifications.map(n => (
+                        <div 
+                          key={n.id} 
+                          className={`notification-item ${n.read ? 'read' : 'unread'}`}
+                          onClick={() => toggleRead(n.id)}
+                        >
+                          <div className="notification-text">{n.text}</div>
+                          <div className="notification-time">{n.time}</div>
+                          {!n.read && <span className="unread-indicator"></span>}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="top-bar-avatar" title={student.name}>
               {student.name.charAt(0)}
             </div>

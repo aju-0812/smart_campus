@@ -4,7 +4,7 @@ from app.core.database import get_db
 from app.models.models import Student, AttendanceRecord, Course
 from app.schemas.schemas import StudentAttendanceSummary, CourseAttendance, RiskAnalysisResponse, RiskStudent
 from app.ml.attendance_model import train_attendance_model, predict_student_risk
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 router = APIRouter(prefix="/attendance", tags=["Attendance"])
 
@@ -67,12 +67,21 @@ def get_student_attendance(student_id: str, db: Session = Depends(get_db)):
     )
 
 @router.get("/risk-analysis", response_model=RiskAnalysisResponse)
-def get_attendance_risk_analysis(limit: int = 50, db: Session = Depends(get_db)):
+def get_attendance_risk_analysis(student_id: Optional[str] = None, limit: int = 50, db: Session = Depends(get_db)):
     """
     Scans students and estimates their risk of attendance shortage (< 75%) in their courses.
     Applies the Random Forest model to predict risk.
     """
-    students = db.query(Student).limit(100).all() # Scan a subset of 100 students for performance
+    if student_id:
+        student = db.query(Student).filter(Student.student_id == student_id).first()
+        if not student:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Student with ID {student_id} not found."
+              )
+        students = [student]
+    else:
+        students = db.query(Student).limit(100).all() # Scan a subset of 100 students for performance
     
     risk_students = []
     

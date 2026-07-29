@@ -109,6 +109,13 @@ def train_attendance_model():
                 "feature_columns": feature_columns
             }, f)
             
+        # Update cache in memory
+        global _MODEL_CACHE
+        _MODEL_CACHE = {
+            "model": rf,
+            "feature_columns": feature_columns
+        }
+            
         logger.info(f"Model saved to {MODEL_PATH}")
         return True
     except Exception as e:
@@ -117,12 +124,29 @@ def train_attendance_model():
     finally:
         db.close()
 
+# In-memory global model cache
+_MODEL_CACHE = None
+
+def get_model():
+    global _MODEL_CACHE
+    if _MODEL_CACHE is not None:
+        return _MODEL_CACHE
+    if os.path.exists(MODEL_PATH):
+        try:
+            with open(MODEL_PATH, "rb") as f:
+                _MODEL_CACHE = pickle.load(f)
+            return _MODEL_CACHE
+        except Exception as e:
+            logger.error(f"Error loading model pkl: {e}")
+    return None
+
 def predict_student_risk(cgpa: float, semester: int, department: str, early_attendance_rate: float) -> dict:
     """
     Predict attendance shortage risk for a student.
     Returns: { "is_at_risk": bool, "risk_probability": float }
     """
-    if not os.path.exists(MODEL_PATH):
+    model_data = get_model()
+    if not model_data:
         # Fallback heuristic if model is not trained yet
         is_at_risk = early_attendance_rate < 0.75
         prob = 0.85 if early_attendance_rate < 0.75 else 0.15
@@ -133,10 +157,8 @@ def predict_student_risk(cgpa: float, semester: int, department: str, early_atte
         }
         
     try:
-        with open(MODEL_PATH, "rb") as f:
-            data = pickle.load(f)
-            model = data["model"]
-            feature_columns = data["feature_columns"]
+        model = model_data["model"]
+        feature_columns = model_data["feature_columns"]
             
         # Create a single-row DataFrame for prediction
         input_data = {
@@ -172,6 +194,9 @@ def predict_student_risk(cgpa: float, semester: int, department: str, early_atte
             "risk_probability": prob,
             "note": f"fallback due to error: {e}"
         }
+
+# Warm up cache at module load time
+get_model()
 
 if __name__ == "__main__":
     train_attendance_model()
