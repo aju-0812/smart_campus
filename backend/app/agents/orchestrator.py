@@ -1,5 +1,9 @@
 import json
 import re
+import os
+import time
+import torch
+torch.set_num_threads(16)
 from typing import Optional
 from sqlalchemy.orm import Session
 from app.core.database import SessionLocal
@@ -77,6 +81,9 @@ def _course_catalog_agent_response(query: str, student_id: str, db: Session, ent
     from app.agents.course_catalog_agent import handle_course_catalog_query
     return handle_course_catalog_query(db, entities)
 
+def _office_agent_response(query: str, student_id: str, db: Session, entities: dict) -> dict:
+    from app.agents.office_agent import handle_office_query
+    return handle_office_query(db, student_id, query, entities)
 
 # ── Route resolution ──────────────────────────────────────────────────────────
 AGENT_FUNCTIONS = {
@@ -94,26 +101,144 @@ AGENT_FUNCTIONS = {
     "department": _department_agent_response,
     "faculty": _faculty_agent_response,
     "course_catalog": _course_catalog_agent_response,
+    "office": _office_agent_response,
 }
 
-llm_instance = None
+# Local LLM and SentenceTransformer instances
+_transformer_model = None
+_tinyllama_generator = None
+_ref_embeddings = {}
+
+HISTORY_FILE = "session_history.json"
+CAMPUS_CACHE = {}
+SESSION_HISTORY_CACHE = {}
+
+def get_cached_data(key: str, ttl: int = 180):
+    if key in CAMPUS_CACHE:
+        val, expiry = CAMPUS_CACHE[key]
+        if time.time() < expiry:
+            return val
+    return None
+
+def set_cached_data(key: str, val, ttl: int = 180):
+    CAMPUS_CACHE[key] = (val, time.time() + ttl)
+
+def load_session_history(session_id: str) -> list:
+    return SESSION_HISTORY_CACHE.get(session_id, [])
+
+def save_session_history(session_id: str, history: list):
+    SESSION_HISTORY_CACHE[session_id] = history[-6:] # Keep last 6 turns (3 complete QA pairs)
+
+def get_transformer_model():
+    global _transformer_model
+    if _transformer_model is None:
+        from sentence_transformers import SentenceTransformer
+        _transformer_model = SentenceTransformer('all-MiniLM-L6-v2')
+    return _transformer_model
+
+def get_tinyllama_generator():
+    global _tinyllama_generator
+    if _tinyllama_generator is None:
+        from transformers import pipeline
+        _tinyllama_generator = pipeline('text-generation', model='TinyLlama/TinyLlama-1.1B-Chat-v1.0', device=-1)
+    return _tinyllama_generator
+
+REFERENCE_QUERIES = {
+    "timetable": [
+        "what is my timetable today",
+        "show my timetable",
+        "what classes do i have today",
+        "when is my next lab",
+        "what subject do i have after lunch",
+        "who teaches period 3",
+        "what is my schedule",
+        "my classes tomorrow",
+        "timetable for tomorrow"
+    ],
+    "attendance": [
+        "what is my attendance",
+        "how many classes can i miss",
+        "predict my attendance shortage",
+        "am i safe from debarment",
+        "will i be debarred",
+        "check my attendance percentage",
+        "attendance risk analysis"
+    ],
+    "navigation": [
+        "how do i get to the library",
+        "navigation route from main block to hostel",
+        "where is the amenity center",
+        "find route to xerox shop",
+        "shortest path to drone block",
+        "campus map navigation"
+    ],
+    "hostel": [
+        "what is my hostel room",
+        "which hostel block am i allocated to",
+        "what is the mess menu today",
+        "who is my hostel warden",
+        "file a complaint about my room"
+    ],
+    "cafeteria": [
+        "recommend lunch today",
+        "what can i eat in the cafeteria",
+        "canteen food menu today",
+        "canteen recommendation for lunch",
+        "is there veg food today"
+    ],
+    "placement": [
+        "will i be eligible for placements",
+        "what is my placement readiness score",
+        "mock interview feedback",
+        "which companies am i eligible for",
+        "placement resume score"
+    ],
+    "exam": [
+        "do i have any exams next week",
+        "when is my next exam",
+        "download my exam hall ticket",
+        "what is my current gpa",
+        "exam results and gpa"
+    ],
+    "hackathon": [
+        "recommend any coding contests",
+        "are there hackathons coming up",
+        "hackathon matching my skills",
+        "when is the next hackathon"
+    ],
+    "transport": [
+        "which bus should i take tomorrow morning",
+        "track daily college bus route",
+        "is there any bus delay prediction",
+        "college daily bus timetable",
+        "bus routes from coimbatore"
+    ],
+    "feedback": [
+        "give feedback for course",
+        "faculty feedback evaluation rating",
+        "sentiment of campus feedback"
+    ],
+    "alumni": [
+        "connect with alumni mentor",
+        "recommend an industry mentor",
+        "alumni mentorship programs"
+    ],
+    "office": [
+        "what is the fee due this semester",
+        "can i apply for a bonafide certificate",
+        "apply for bonafide or study certificate",
+        "request an id card reissue",
+        "office announcements and circulars",
+        "is tomorrow a holiday",
+        "no dues certificate request status"
+    ]
+}
 
 def get_llm():
-    global llm_instance
-    if llm_instance is None:
-        try:
-            from llama_cpp import Llama
-            llm_instance = Llama(
-                model_path="models/Qwen2.5-7B-Instruct-Q4_K_M.gguf",
-                n_ctx=2048,
-                n_gpu_layers=-1,
-                verbose=False
-            )
-        except Exception as e:
-            print(f"Failed to load LLM: {e}")
-            return None
-    return llm_instance
-
+    try:
+        return get_tinyllama_generator()
+    except:
+        return None
 
 def _handle_personal_queries(query: str, student) -> Optional[str]:
     if not student:
@@ -139,10 +264,8 @@ def _handle_personal_queries(query: str, student) -> Optional[str]:
                f"CGPA: {student.cgpa}"
     return None
 
-
 def _handle_general_conversations(query: str) -> Optional[str]:
     q = query.strip().lower()
-    
     greetings = ["hi", "hello", "hey", "good morning", "good afternoon", "good evening", "greetings"]
     thanks = ["thanks", "thank you", "cheers", "appreciate it"]
     identity = ["who are you", "what is your name", "your name", "who made you"]
@@ -151,13 +274,10 @@ def _handle_general_conversations(query: str) -> Optional[str]:
     clean_q = re.sub(r'[^\w\s]', '', q).strip()
     if clean_q in greetings:
         return "Hello. How can I assist you with your campus services today?"
-        
     if any(t in clean_q for t in thanks):
         return "You are welcome. Let me know if you need help with other campus services."
-        
     if any(i in clean_q for i in identity):
         return "I am the Smart Campus AI Assistant. I help students access timetable schedules, attendance logs, exam discovery tools, hostel details, cafeteria recommendations, placements, transport updates, and alumni mentorship programs."
-        
     if any(c in clean_q for c in capabilities):
         return "I can help you with the following campus services:\n" \
                "- Timetable: View class schedules, period slots, classrooms, and faculty names.\n" \
@@ -171,368 +291,197 @@ def _handle_general_conversations(query: str) -> Optional[str]:
                "- Transport: Track bus schedules, arrival times, route details, and delay predictions.\n" \
                "- Feedback: File course/faculty feedback evaluations and view platforms reviews.\n" \
                "- Alumni: Connect with industry alumni mentors by skill set criteria."
-               
     return None
 
-
-def _fallback_intent_classifier(query: str, session_context: dict) -> dict:
+def _detect_intents_semantically(query: str, session_context: dict) -> list:
     q = query.lower()
-    intent = "general"
-    entities = {}
+    triggered = set()
     
-    last_agent = session_context.get("last_agent")
+    # 1. Keyword check for strong indicator mappings
+    keyword_mappings = {
+        "timetable": ["timetable", "schedule", "class", "period", "routine", "teach", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"],
+        "attendance": ["attendance", "present", "absent", "debar", "shortage", "percentage"],
+        "navigation": ["route", "map", "navigation", "direction", "where is", "building", "block", "find room", "path"],
+        "hostel": ["hostel", "room", "mess", "warden", "complaint", "mess menu"],
+        "cafeteria": ["cafeteria", "canteen", "food", "menu", "lunch", "dinner", "breakfast", "eat"],
+        "placement": ["placement", "job", "career", "interview", "readiness", "resume", "company"],
+        "exam": ["exam", "test", "result", "grade", "gpa", "cgpa", "ticket", "hall ticket"],
+        "hackathon": ["hackathon", "coding contest", "competition"],
+        "transport": ["bus", "transport", "shuttle", "delay", "stop"],
+        "feedback": ["feedback", "form", "rating", "sentiment"],
+        "alumni": ["mentor", "alumni", "connect"],
+        "office": ["fee", "pending", "dues", "pay", "payment", "receipt", "bonafide", "circular", "announcement", "id card", "bus pass", "holiday"]
+    }
     
-    is_time_filter = False
-    time_filter_val = None
-    if "tomorrow" in q:
-        is_time_filter = True
-        time_filter_val = "tomorrow"
-    elif "afternoon" in q:
-        is_time_filter = True
-        time_filter_val = "afternoon"
-    elif "first" in q:
-        is_time_filter = True
-        time_filter_val = "first"
-        
-    if last_agent == "timetable":
-        if is_time_filter or any(k in q for k in ["period", "teach", "class", "room", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]):
-            intent = "timetable"
-            if time_filter_val:
-                entities["time_filter"] = time_filter_val
-            period_match = re.search(r'period\s*(\d+)', q)
-            if period_match:
-                entities["period_number"] = int(period_match.group(1))
-            return {"intent": intent, "entities": entities}
-
-    if any(k in q for k in ["timetable", "schedule", "class", "period", "routine", "lecture", "teach", "professor", "teacher", "room", "slot", "classroom", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]):
-        intent = "timetable"
-        if time_filter_val:
-            entities["time_filter"] = time_filter_val
-        period_match = re.search(r'period\s*(\d+)', q)
-        if period_match:
-            entities["period_number"] = int(period_match.group(1))
+    for intent, kw_list in keyword_mappings.items():
+        if any(k in q for k in kw_list):
+            triggered.add(intent)
             
-    elif any(k in q for k in ["attendance", "present", "absent", "risk", "debar", "shortage", "safe", "percentage", "classes attended"]):
-        intent = "attendance"
-        
-    elif any(k in q for k in ["route", "map", "navigation", "direction", "where is", "building", "block", "find room", "distance", "dijkstra", "path"]):
-        intent = "navigation"
-        for b in ["library", "admin", "hostel", "sports", "cafeteria", "food court", "auditorium", "medical", "placement"]:
-            if b in q:
-                entities["building_name"] = b
+    # 2. Semantic Similarity check
+    try:
+        model = get_transformer_model()
+        global _ref_embeddings
+        if not _ref_embeddings:
+            for intent, refs in REFERENCE_QUERIES.items():
+                _ref_embeddings[intent] = model.encode(refs, convert_to_tensor=True)
                 
-    elif any(k in q for k in ["hostel", "room", "mess", "warden", "complaint", "allocat", "boys block", "girls block"]):
-        intent = "hostel"
+        query_emb = model.encode(query, convert_to_tensor=True)
         
-    elif any(k in q for k in ["cafeteria", "canteen", "food", "menu", "recommend", "lunch", "dinner", "breakfast", "eat", "order"]):
-        intent = "cafeteria"
-        
-    elif any(k in q for k in ["placement", "job", "career", "interview", "readiness", "resume", "company", "companies", "eligib"]):
-        intent = "placement"
-        
-    elif any(k in q for k in ["exam", "test", "result", "grade", "gpa", "sgpa", "cgpa", "ticket", "hall ticket", "admit card"]):
-        intent = "exam"
-        
-    elif any(k in q for k in ["hackathon", "coding contest", "competition", "sprint", "event"]):
-        intent = "hackathon"
-        
-    elif any(k in q for k in ["bus", "transport", "shuttle", "route", "delay", "stop", "estimated arrival"]):
-        intent = "transport"
-        
-    elif any(k in q for k in ["feedback", "sentiment", "form", "survey", "rating", "faculty rating"]):
-        intent = "feedback"
-        
-    elif any(k in q for k in ["mentor", "alumni", "connect", "graduat"]):
-        intent = "alumni"
-        
-    elif any(k in q for k in ["department", "dept"]):
-        intent = "department"
-        
-    elif any(k in q for k in ["faculty", "professor", "teacher", "hod", "dean", "cabin"]):
-        intent = "faculty"
-        if "hod" in q:
-            entities["query_type"] = "hod"
+        from sentence_transformers.util import cos_sim
+        intent_scores = {}
+        for intent, ref_embs in _ref_embeddings.items():
+            sims = cos_sim(query_emb, ref_embs)
+            intent_scores[intent] = float(sims.max())
             
-    elif any(k in q for k in ["course", "catalog", "syllabus", "subject"]):
-        intent = "course_catalog"
+        # Rank intents by similarity score
+        sorted_intents = sorted(intent_scores.items(), key=lambda x: x[1], reverse=True)
         
-    return {"intent": intent, "entities": entities}
-
+        # Add up to 2 semantic intents with a balanced threshold of 0.45
+        added_count = 0
+        for intent, score in sorted_intents:
+            if score >= 0.45:
+                if intent not in triggered:
+                    triggered.add(intent)
+                    added_count += 1
+                if added_count >= 2:
+                    break
+    except Exception as e:
+        print(f"Semantic similarity error: {e}")
+        
+    # 3. Contextual reinforcement
+    last_agent = session_context.get("last_agent")
+    if last_agent == "timetable" and any(k in q for k in ["period", "teach", "class", "who"]):
+        triggered.add("timetable")
+    if last_agent == "office" and any(k in q for k in ["request", "status", "apply"]):
+        triggered.add("office")
+        
+    return list(triggered)
 
 def _fallback_response_formatter(intent: str, json_data: dict, query: str) -> str:
     if "error" in json_data:
-        return f"Error: {json_data['error']}"
+        return f"I couldn't complete that request because of a database connection issue. Please try again."
         
     q = query.lower()
-        
     if intent == "timetable":
         classes = json_data.get("classes", [])
         if not classes:
-            return f"Timetable: {json_data.get('message', 'No classes scheduled.')}"
-            
+            return "I couldn't find any classes scheduled in your timetable for today."
         period_match = re.search(r'period\s*(\d+)', q)
         if period_match:
             p_num = int(period_match.group(1))
             if p_num <= len(classes):
                 c = classes[p_num - 1]
-                return f"Period {p_num} is {c.get('course')} in Room {c.get('room')} by {c.get('faculty')} ({c.get('time')})."
-            else:
-                return f"You only have {len(classes)} classes scheduled for this day."
-                
-        for c in classes:
-            c_name = c.get("course", "").lower()
-            course_words = [w for w in c_name.split() if len(w) > 3]
-            if course_words and any(w in q for w in course_words):
-                return f"The course {c.get('course')} is taught by {c.get('faculty')} in Room {c.get('room')}."
-                
-        response = f"Timetable for {json_data.get('student', 'you')} ({json_data.get('day', 'Today')}):\n"
+                return f"For Period {p_num}, you have {c.get('course')} in Room {c.get('room')} taught by {c.get('faculty')} ({c.get('time')})."
+            return f"You have only {len(classes)} periods scheduled."
+        res = "Here is your class timetable:\n"
         for i, c in enumerate(classes):
-            response += f"  - Period {i+1}: {c.get('time')} - {c.get('course')} in Room {c.get('room')} by {c.get('faculty')}\n"
-        return response.strip()
+            res += f"  - Period {i+1}: {c.get('course')} in Room {c.get('room')} ({c.get('time')} - HOD: {c.get('faculty')})\n"
+        return res
         
     elif intent == "attendance":
-        pct = json_data.get("attendance_percentage", 0.0)
-        status = json_data.get("status", "Unknown")
+        pct = json_data.get("attendance_percentage", 75.0)
         total = json_data.get("total_classes", 0)
         attended = json_data.get("classes_attended", 0)
-        msg = json_data.get("message", "")
-        return f"Attendance Summary:\n" \
-               f"  - Name: {json_data.get('student_name', 'Student')}\n" \
-               f"  - Overall Attendance: {pct}%\n" \
-               f"  - Status: {status}\n" \
-               f"  - Classes Attended: {attended}/{total}\n" \
-               f"  - Alert: {msg}"
-               
-    elif intent == "navigation":
-        if "walk_time_minutes" in json_data:
-            path = " -> ".join(json_data.get("path", []))
-            return f"Route Found:\n" \
-                   f"  - From: {json_data.get('from')}\n" \
-                   f"  - To: {json_data.get('to')}\n" \
-                   f"  - Estimated Walking Time: {json_data.get('walk_time_minutes')} mins ({json_data.get('distance_estimate_meters')} meters)\n" \
-                   f"  - Path: {path}"
-        known = json_data.get("known_buildings", [])
-        return f"Known Campus Buildings:\n" + "\n".join(f"  - {b}" for b in known)
-
+        status = json_data.get("status", "Satisfactory")
+        alert = json_data.get("message", "")
+        return f"Your overall attendance is currently {pct}% ({attended} out of {total} classes attended). The status is marked as {status}. {alert}"
+        
+    elif intent == "office":
+        if "fee_info" in json_data:
+            f = json_data["fee_info"]
+            return f"Your total fee statement is Rs. {f.get('total_fee')}. You have paid Rs. {f.get('paid_amount')} and have a pending balance of Rs. {f.get('pending_balance')} due by {f.get('due_date')}."
+        if "certificate_requests" in json_data:
+            reqs = json_data["certificate_requests"]
+            if reqs:
+                return "Your requested certificates:\n" + "\n".join(f"  - {r['certificate_type']}: {r['status']}" for r in reqs)
+            return "You have no active certificate requests."
+        if "announcements" in json_data:
+            ann = json_data["announcements"]
+            if ann:
+                return "Latest announcements:\n" + "\n".join(f"  - {a['title']} ({a['announcement_type']})" for a in ann)
+            return "No announcements found."
+        return "I can fetch your pending fee details, certificate applications, or announcements. Which would you like?"
+        
+    elif intent == "exam":
+        upcoming = json_data.get("upcoming_exams", [])
+        if upcoming:
+            res = "Here are your upcoming examinations:\n"
+            for e in upcoming[:3]:
+                res += f"  - {e.get('course_name')} ({e.get('course_code')}) on {e.get('date')} at {e.get('start_time')} | Venue: {e.get('venue')}\n"
+            return res
+        return "There are no upcoming exams listed in your current semester schedule."
+        
+    elif intent == "transport":
+        buses = json_data.get("available_buses", [])
+        if buses:
+            return f"There are {len(buses)} college daily buses active across the major routes. For Udumalpet, Udumalai, Coimbatore, and Pollachi, routes run as scheduled."
+        return "No active transport buses are listed at this moment."
+        
     elif intent == "hostel":
         info = json_data.get("hostel_info", {})
         menu = json_data.get("mess_menu_today", [])
-        
-        response = ""
+        res = ""
         if info.get("hostel_allocated"):
-            response += f"Hostel Allocation:\n" \
-                        f"  - Hostel: {info.get('hostel_name')} ({info.get('hostel_gender')} Wing)\n" \
-                        f"  - Room Number: {info.get('room_number')} (Floor {info.get('floor')})\n" \
-                        f"  - Warden: {info.get('warden_name')} ({info.get('warden_phone')})\n\n"
-        else:
-            response += f"Hostel Allocation: Not allocated.\n\n"
-            
+            res += f"You are allocated to Room {info.get('room_number')} in {info.get('hostel_name')} Warden: {info.get('warden_name')}.\n"
         if menu:
-            response += f"Mess Menu Today:\n"
-            for m in menu:
-                response += f"  - {m.get('meal_type')}: {m.get('items')} (~{m.get('calories_approx')} kcal)\n"
-        return response.strip()
-
+            res += "Today's Mess Menu:\n" + "\n".join(f"  - {m.get('meal_type')}: {m.get('items')}" for m in menu)
+        return res if res else "Hostel details could not be found."
+        
     elif intent == "cafeteria":
         menu = json_data.get("menu", [])
         recs = json_data.get("recommendations", [])
-        
-        response = ""
-        if menu:
-            response += f"Cafeteria Menu Today:\n"
-            for m in menu[:5]:
-                category = "Veg" if m.get("is_veg") else "Non-Veg"
-                response += f"  - {m.get('name')} ({m.get('category')}) - Rs. {m.get('price')} [{category}]\n"
-            if len(menu) > 5:
-                response += f"    ...and {len(menu)-5} more items.\n"
-                
+        res = "Cafeteria Menu Highlights:\n"
+        for m in menu[:3]:
+            res += f"  - {m.get('name')} (Rs. {m.get('price')})\n"
         if recs:
-            response += f"\nRecommended Food Items:\n"
-            for r in recs[:3]:
-                response += f"  - {r.get('name')} (Score: {r.get('recommendation_score')}%) - {r.get('method')}\n"
-        return response.strip()
-
-    elif intent == "placement":
-        profile = json_data.get("profile", {})
-        matches = json_data.get("company_matches", [])
+            res += "Recommendations based on your profile:\n" + "\n".join(f"  - {r.get('name')}" for r in recs[:2])
+        return res
         
-        response = ""
-        if "readiness_score" in profile:
-            response += f"Placement Readiness Profile:\n" \
-                        f"  - Readiness Score: {profile.get('readiness_score')}/100\n" \
-                        f"  - Resume Score: {profile.get('resume_score')}/100\n" \
-                        f"  - Mock Interviews Done: {profile.get('mock_interviews_done')}\n" \
-                        f"  - Internships: {profile.get('internships')}, Projects: {profile.get('projects')}\n\n"
-                        
-        if matches:
-            response += f"Eligible Company Matches:\n"
-            for m in matches[:3]:
-                response += f"  - {m.get('name')} ({m.get('industry')}) - Package: {m.get('package_lpa_min')}-{m.get('package_lpa_max')} LPA (Match: {m.get('match_score')}%)\n"
-        return response.strip()
-
-    elif intent == "exam":
-        upcoming = json_data.get("upcoming_exams", [])
-        countdown = json_data.get("countdown")
-        
-        response = f"Exam Dashboard for {json_data.get('name', 'you')} (Sem {json_data.get('semester', 'N/A')}):\n"
-        if countdown:
-            response += f"  {countdown}\n\n"
-            
-        if upcoming:
-            response += f"Upcoming Exams:\n"
-            for e in upcoming[:3]:
-                response += f"  - {e.get('course_name')} ({e.get('course_code')}) - Date: {e.get('date')} at {e.get('start_time')} | Venue: {e.get('venue')}\n"
-        else:
-            response += f"No upcoming exams scheduled.\n"
-        return response.strip()
-
-    elif intent == "hackathon":
-        recs = json_data.get("recommended_hackathons", [])
-        if not recs:
-            return "Hackathons: No upcoming recommended hackathons found."
-        response = "Recommended Hackathons for You:\n"
-        for r in recs[:3]:
-            response += f"  - {r.get('title')} by {r.get('organizer')} on {r.get('platform')}\n" \
-                        f"    Prize: {r.get('prize_pool')} | Deadline: {r.get('registration_deadline')} (Match: {r.get('match_score')}%)\n"
-        return response.strip()
-
-    elif intent == "transport":
-        buses = json_data.get("available_buses", [])
-        if not buses:
-            return "Transport: No active bus services available right now."
-        response = "Active Campus Buses and Routes:\n"
-        for b in buses[:5]:
-            response += f"  - Bus: {b.get('bus_number')} ({b.get('route_name')}) | Driver: {b.get('driver_name')} ({b.get('driver_phone')})\n"
-        return response.strip()
-
-    elif intent == "feedback":
-        total = json_data.get("total_responses", 0)
-        avg_rating = json_data.get("avg_platform_rating", 0.0)
-        sentiments = json_data.get("sentiment_pct", {})
-        top_faculty = json_data.get("top_rated_faculty", [])
-        
-        response = f"Feedback System Dashboard Summary:\n" \
-                   f"  - Total Submissions Analyzed: {total}\n" \
-                   f"  - Average Platform Rating: {avg_rating}/5.0\n" \
-                   f"  - Sentiment Breakdown: Positive {sentiments.get('Positive', 0.0)}%, Neutral {sentiments.get('Neutral', 0.0)}%, Negative {sentiments.get('Negative', 0.0)}%\n\n"
-        if top_faculty:
-            response += f"Top Rated Faculty:\n"
-            for f in top_faculty[:3]:
-                response += f"  - {f.get('name')} (Avg Rating: {f.get('avg_rating')}/5.0 from {f.get('response_count')} responses)\n"
-        return response.strip()
-
-    elif intent == "alumni":
-        matches = json_data.get("mentor_matches", [])
-        if not matches:
-            return "Alumni Mentorship: No mentor matches available right now."
-        response = "Top Alumni Mentor Recommendations for You:\n"
-        for m in matches[:3]:
-            dept_status = "Same Dept" if m.get("same_department") else "Cross Dept"
-            response += f"  - {m.get('name')} - {m.get('current_role')} at {m.get('current_company')} ({dept_status})\n" \
-                        f"    Graduated: {m.get('graduation_year')} | Skills: {', '.join(m.get('skills', []))}\n"
-        return response.strip()
-
-    elif intent == "department":
-        return f"Department Profile:\n" \
-               f"  - Name: {json_data.get('department_name')} ({json_data.get('department_code')})\n" \
-               f"  - HOD: {json_data.get('hod')}\n" \
-               f"  - Office Email: {json_data.get('office_email')} | Phone: {json_data.get('office_phone')}\n" \
-               f"  - Location: {json_data.get('building')} (Floor {json_data.get('floor')})\n" \
-               f"  - Description: {json_data.get('description')}"
-
-    elif intent == "faculty":
-        if "faculty_name" in json_data:
-            return f"Faculty Profile:\n" \
-                   f"  - Name: {json_data.get('faculty_name')} ({json_data.get('designation')})\n" \
-                   f"  - Department: {json_data.get('department')}\n" \
-                   f"  - Office Room: {json_data.get('office_room')} in {json_data.get('office_building')}\n" \
-                   f"  - Office Hours: {json_data.get('office_hours')}\n" \
-                   f"  - Qualification: {json_data.get('qualification')} ({json_data.get('experience_years')} yrs experience)\n" \
-                   f"  - Contact: {json_data.get('email')} | Phone: {json_data.get('phone')}"
-        elif "hod_name" in json_data:
-            return f"HOD Profile:\n" \
-                   f"  - Department: {json_data.get('department')}\n" \
-                   f"  - HOD: {json_data.get('hod_name')}\n" \
-                   f"  - Office Room: {json_data.get('office_room')} in {json_data.get('office_building')}\n" \
-                   f"  - Qualification: {json_data.get('qualification')}"
-        elif "faculty_members" in json_data:
-            members = ", ".join(json_data.get("faculty_members", []))
-            return f"Faculty Members in {json_data.get('department')}:\n" \
-                   f"  - HOD: {json_data.get('hod')}\n" \
-                   f"  - Staff: {members}"
-        return f"Faculty Info: {json.dumps(json_data)}"
-
-    elif intent == "course_catalog":
-        if "course_name" in json_data:
-            return f"Course Profile:\n" \
-                   f"  - Name: {json_data.get('course_name')} ({json_data.get('course_id')})\n" \
-                   f"  - Department: {json_data.get('department')} | Semester: {json_data.get('semester')}\n" \
-                   f"  - Credits: {json_data.get('credits')} credits | Type: {json_data.get('type')}"
-        elif "courses" in json_data:
-            courses = ", ".join(json_data.get("courses", []))
-            return f"Courses Offered in {json_data.get('department')}:\n" \
-                   f"  - List: {courses}"
-        return f"Course Catalog: {json.dumps(json_data)}"
-
-    return f"Here is the details for your request:\n{json.dumps(json_data, indent=2)}"
-
-
-def _extract_intent_and_entities(query: str, session_context: dict) -> dict:
-    """Extract intent and entities using LLM or rule-based fallback."""
-    llm = get_llm()
-    if not llm:
-        return _fallback_intent_classifier(query, session_context)
-
-    valid_intents = list(AGENT_FUNCTIONS.keys())
-    
-    prompt = f"""<|im_start|>system
-You are a routing agent for a University system. Classify intent and extract entities.
-Valid intents: {', '.join(valid_intents)}, general.
-Previous Context: {json.dumps(session_context)}
-Extract entities like 'faculty_name', 'department_name', 'course_name', 'query_type', 'time_filter'.
-Return ONLY valid JSON like: {{"intent": "faculty", "entities": {{"faculty_name": "Rajesh", "query_type": "hod"}}}}<|im_end|>
-<|im_start|>user
-Query: "{query}"<|im_end|>
-<|im_start|>assistant
-"""
-    try:
-        response = llm(prompt, max_tokens=100, stop=["<|im_end|>"], temperature=0.1)
-        text = response['choices'][0]['text'].strip()
-        json_match = re.search(r'\{.*\}', text, re.DOTALL)
-        if json_match:
-            data = json.loads(json_match.group())
-            return data
-    except Exception as e:
-        print(f"Extraction error: {e}")
-        
-    return _fallback_intent_classifier(query, session_context)
-
+    return f"Here is the detailed information: {json.dumps(json_data, indent=1)}"
 
 def query_orchestrator(query: str, student_id: str, session_id: str = "default") -> str:
-    """Main orchestrator entry point with memory and hybrid routing."""
+    """Conversational campus AI orchestrator."""
     db = _get_db()
     try:
-        # Fetch student details for personal info
-        from app.models.models import Student
-        student = db.query(Student).filter(Student.student_id == student_id).first()
+        # Cache student profile lookups
+        student_key = f"student_profile_{student_id}"
+        cached_student = get_cached_data(student_key)
+        if cached_student:
+            class StudentMock:
+                def __init__(self, **kwargs):
+                    self.__dict__.update(kwargs)
+            student = StudentMock(**cached_student)
+        else:
+            from app.models.models import Student
+            student = db.query(Student).filter(Student.student_id == student_id).first()
+            if student:
+                student_data = {
+                    "name": student.name,
+                    "student_id": student.student_id,
+                    "department": student.department,
+                    "semester": student.semester,
+                    "cgpa": student.cgpa
+                }
+                set_cached_data(student_key, student_data, ttl=600) # Cache student profile for 10 minutes
 
         # Handle Personal Queries
         personal_reply = _handle_personal_queries(query, student)
         if personal_reply:
             return personal_reply
 
-        # Handle General Conversations
+        # Handle General Greetings & Capabilities
         general_reply = _handle_general_conversations(query)
         if general_reply:
             return general_reply
 
-        # 1. Memory Management
+        # 1. Load Session History
+        history = load_session_history(session_id)
         session = db.query(ConversationSession).filter(ConversationSession.session_id == session_id).first()
         if not session:
             session = ConversationSession(session_id=session_id)
             db.add(session)
             db.commit()
-            
+
         context = {
             "last_agent": session.last_agent,
             "last_entity": session.last_entity,
@@ -541,56 +490,102 @@ def query_orchestrator(query: str, student_id: str, session_id: str = "default")
             "last_course": session.last_course
         }
 
-        # 2. Extract Intent and Entities
-        extracted = _extract_intent_and_entities(query, context)
-        intent = extracted.get("intent", "general")
-        entities = extracted.get("entities", {})
+        # 2. Extract Intents Semantically
+        triggered_intents = _detect_intents_semantically(query, context)
+        
+        # 3. Handle General Knowledge Queries (if no campus agent triggered)
+        if not triggered_intents:
+            session.last_agent = "general"
+            db.commit()
+            
+            generator = get_tinyllama_generator()
+            
+            # Format conversational prompt
+            prompt = "<|system|>\nYou are a friendly, conversational academic AI assistant for Sri Eshwar College. Keep your answers concise, clear, and natural. Do not mention system internals.</s>\n"
+            for turn in history[-4:]:
+                role_label = "user" if turn["role"] == "user" else "assistant"
+                prompt += f"<|{role_label}|>\n{turn['content']}</s>\n"
+            prompt += f"<|user|>\n{query}</s>\n<|assistant|>\n"
+            
+            with torch.inference_mode():
+                res = generator(prompt, max_new_tokens=75, stop_sequence="<|user|>", temperature=0.3)
+            answer = res[0]['generated_text'].split("<|assistant|>\n")[-1].strip().split("<|")[0].strip()
+            
+            # Save history
+            history.append({"role": "user", "content": query})
+            history.append({"role": "assistant", "content": answer})
+            save_session_history(session_id, history)
+            return answer
 
-        # Merge previous context if entities missing but intent implies it
-        if not entities.get("faculty_name") and session.last_faculty:
-            entities["faculty_name"] = session.last_faculty
-        if not entities.get("department_name") and session.last_department:
-            entities["department_name"] = session.last_department
+        # 4. Call Triggered Campus Agents concurrently
+        combined_json = {}
+        agents_to_run = [intent for intent in triggered_intents if intent in AGENT_FUNCTIONS]
+        
+        if agents_to_run:
+            from concurrent.futures import ThreadPoolExecutor
+            
+            entities = {}
+            q_lower = query.lower()
+            if "tomorrow" in q_lower:
+                entities["time_filter"] = "tomorrow"
+            period_match = re.search(r'period\s*(\d+)', q_lower)
+            if period_match:
+                entities["period_number"] = int(period_match.group(1))
 
+            def run_single_agent(agent_name):
+                # Check cache for static/safe agents
+                if agent_name in ["timetable", "transport", "department", "course_catalog"] and not entities.get("period_number"):
+                    cache_key = f"agent_res_{agent_name}_{student_id}"
+                    cached_val = get_cached_data(cache_key)
+                    if cached_val:
+                        return cached_val
+                
+                thread_db = _get_db()
+                try:
+                    res = AGENT_FUNCTIONS[agent_name](query, student_id, thread_db, entities)
+                    if agent_name in ["timetable", "transport", "department", "course_catalog"] and not entities.get("period_number"):
+                        cache_key = f"agent_res_{agent_name}_{student_id}"
+                        set_cached_data(cache_key, res, ttl=180) # Cache for 3 minutes
+                    return res
+                finally:
+                    thread_db.close()
+
+            with ThreadPoolExecutor(max_workers=len(agents_to_run)) as executor:
+                futures = {name: executor.submit(run_single_agent, name) for name in agents_to_run}
+                for name, future in futures.items():
+                    combined_json[name] = future.result()
+                
         # Update memory
-        session.last_agent = intent
-        if entities.get("faculty_name"): session.last_faculty = entities["faculty_name"]
-        if entities.get("department_name"): session.last_department = entities["department_name"]
-        if entities.get("course_name"): session.last_course = entities["course_name"]
+        session.last_agent = triggered_intents[0]
         db.commit()
 
-        # 3. Call Agent (returns JSON)
-        if intent in AGENT_FUNCTIONS:
-            json_data = AGENT_FUNCTIONS[intent](query, student_id, db, entities)
-        else:
-            json_data = {"message": "General assistant query. No specific agent data."}
+        # 5. Generate Merged Response
+        generator = get_tinyllama_generator()
+        json_str = json.dumps(combined_json, separators=(',', ':'), default=str)
+        if len(json_str) > 2000:
+            json_str = json_str[:2000] + "... (truncated data)"
+            
+        prompt = f"<|system|>\nYou are a friendly conversational assistant. Use the campus database JSON below to answer the student's question in a single cohesive, natural paragraph. Do not expose raw JSON or internal variable names. If the database is empty or says not found, explain naturally. Conciseness is key.\n\nDatabase JSON:\n{json_str}</s>\n"
+        for turn in history[-3:]:
+            role_label = "user" if turn["role"] == "user" else "assistant"
+            prompt += f"<|{role_label}|>\n{turn['content']}</s>\n"
+        prompt += f"<|user|>\n{query}</s>\n<|assistant|>\n"
+        
+        try:
+            with torch.inference_mode():
+                res = generator(prompt, max_new_tokens=85, stop_sequence="<|user|>", temperature=0.1)
+            answer = res[0]['generated_text'].split("<|assistant|>\n")[-1].strip().split("<|")[0].strip()
+        except Exception as e:
+            print(f"TinyLlama formatting error: {e}")
+            answer = _fallback_response_formatter(triggered_intents[0], combined_json.get(triggered_intents[0], {}), query)
 
-        # 4. Final Answer Generation (Zero Hallucination)
-        llm = get_llm()
-        if llm:
-            json_str = json.dumps(json_data, default=str)
-            if len(json_str) > 3000:
-                json_str = json_str[:3000] + "... [TRUNCATED]"
-                
-            prompt = f"""<|im_start|>system
-You are a helpful university AI assistant. Use ONLY the data in the Database JSON below to answer the user's query.
-If the JSON says error, not found, or is empty, say you don't have that information. Keep answers concise.
-Database JSON: {json_str}<|im_end|>
-<|im_start|>user
-{query}<|im_end|>
-<|im_start|>assistant
-"""
-            try:
-                response = llm(prompt, max_tokens=250, stop=["<|im_end|>"], temperature=0.1)
-                answer = response['choices'][0]['text'].strip()
-                return answer
-            except Exception as e:
-                print(f"LLM Generation error: {e}")
-                return f"Error generating response: {e}"
-
-        return _fallback_response_formatter(intent, json_data, query)
+        # Save history
+        history.append({"role": "user", "content": query})
+        history.append({"role": "assistant", "content": answer})
+        save_session_history(session_id, history)
+        return answer
 
     except Exception as e:
-        return f"Orchestrator encountered an error: {str(e)}"
+        return f"I encountered an orchestrator error while retrieval: {str(e)}"
     finally:
         db.close()

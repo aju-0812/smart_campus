@@ -546,6 +546,7 @@ class Bus(Base):
     __tablename__ = "buses"
     id = Column(Integer, primary_key=True, index=True)
     bus_number = Column(String, unique=True, nullable=False)
+    city = Column(String, nullable=True) # Coimbatore, Tiruppur, Udumalai, Pollachi
     route_name = Column(String, nullable=False)
     capacity = Column(Integer, default=50)
     driver_name = Column(String, nullable=True)
@@ -564,6 +565,7 @@ class BusStop(Base):
     stop_name = Column(String, nullable=False)
     stop_order = Column(Integer, nullable=False)
     scheduled_arrival = Column(String, nullable=False)  # e.g. "08:30"
+    is_spot = Column(Boolean, default=False)
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
 
@@ -591,6 +593,25 @@ class BusDelay(Base):
     reason = Column(String, nullable=True)  # Traffic/Breakdown/Weather
 
     bus = relationship("Bus", back_populates="delays")
+
+
+class BusTicketBooking(Base):
+    __tablename__ = "bus_ticket_bookings"
+    id = Column(Integer, primary_key=True, index=True)
+    ticket_number = Column(String, unique=True, index=True, nullable=False)
+    student_id = Column(String, nullable=False)
+    student_name = Column(String, nullable=False)
+    hostel_block_room = Column(String, nullable=True)
+    bus_id = Column(Integer, ForeignKey("buses.id"), nullable=False)
+    seat_number = Column(String, nullable=False)
+    travel_date = Column(String, nullable=False)
+    destination_city = Column(String, nullable=False)
+    boarding_point = Column(String, nullable=False)
+    drop_point = Column(String, nullable=False)
+    departure_time = Column(String, nullable=False)
+    contact_phone = Column(String, nullable=True)
+    status = Column(String, default="CONFIRMED") # CONFIRMED / CANCELLED
+    qr_code_data = Column(String, nullable=True)
 
 
 # ════════════════════════════════════════════════════════════════
@@ -736,3 +757,58 @@ class FAQ(Base):
     question = Column(String, nullable=False)
     answer = Column(Text, nullable=False)
     category = Column(String, nullable=True)
+
+# ── Office Agent Models ───────────────────────────────────────
+class FeeStatement(Base):
+    __tablename__ = "fee_statements"
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(String, ForeignKey("students.student_id"), nullable=False)
+    semester = Column(Integer, nullable=False)
+    current_semester_fee = Column(Float, nullable=False)
+    total_fee = Column(Float, nullable=False)
+    paid_amount = Column(Float, nullable=False)
+    pending_balance = Column(Float, nullable=False)
+    due_date = Column(Date, nullable=False)
+    late_fee = Column(Float, default=0.0)
+    fee_breakdown = Column(JSON, nullable=True) # e.g. {"Tuition": 45000, "Transport": 12000, ...}
+    payment_history = Column(JSON, nullable=True) # e.g. list of past transactions
+
+class CertificateRequest(Base):
+    __tablename__ = "certificate_requests"
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(String, ForeignKey("students.student_id"), nullable=False)
+    certificate_type = Column(String, nullable=False) # e.g. "Bonafide", "Study", etc.
+    status = Column(String, default="Submitted") # "Submitted", "Under Verification", "Approved", "Rejected", "Ready for Collection"
+    application_number = Column(String, unique=True, index=True, nullable=False)
+    created_date = Column(DateTime, server_default=func.now())
+    estimated_completion_date = Column(Date, nullable=True)
+    remarks = Column(Text, nullable=True)
+
+class OfficeRequest(Base):
+    __tablename__ = "office_requests"
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(String, ForeignKey("students.student_id"), nullable=False)
+    request_type = Column(String, nullable=False) # e.g. "ID Card Reissue", "Bus Pass Request"
+    request_number = Column(String, unique=True, index=True, nullable=False)
+    status = Column(String, default="Pending")
+    remarks = Column(Text, nullable=True)
+    created_date = Column(DateTime, server_default=func.now())
+    last_updated = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+class OfficeDocument(Base):
+    __tablename__ = "office_documents"
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(String, ForeignKey("students.student_id"), nullable=False)
+    document_name = Column(String, nullable=False)
+    document_type = Column(String, nullable=False) # "Receipt", "Statement", "Circular"
+    download_url = Column(String, nullable=False)
+    created_date = Column(DateTime, server_default=func.now())
+
+class OfficeAnnouncement(Base):
+    __tablename__ = "office_announcements"
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    announcement_type = Column(String, nullable=False) # "Holiday", "Deadline", "Circular"
+    content = Column(Text, nullable=False)
+    publish_date = Column(Date, nullable=False)
+    expiry_date = Column(Date, nullable=True)

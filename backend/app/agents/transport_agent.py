@@ -1,32 +1,51 @@
 """Transport Information Agent — Route planning + delay prediction."""
 from typing import List, Dict, Optional
 from sqlalchemy.orm import Session
-from app.models.models import Bus, BusStop, BusSchedule, BusDelay
+from app.models.models import Bus, BusStop, BusSchedule, BusDelay, BusTicketBooking
 from loguru import logger
 from datetime import date, datetime
 import heapq
 import statistics
+import random
+import time
 
-
-def get_all_buses(db: Session) -> List[Dict]:
-    logger.info("Transport Agent: get_all_buses")
+def get_all_buses(db: Session, city: Optional[str] = None) -> List[Dict]:
+    logger.info(f"Transport Agent: get_all_buses city={city}")
     try:
-        buses = db.query(Bus).filter(Bus.is_active == True).all()
-        return [
-            {
+        query = db.query(Bus).filter(Bus.is_active == True)
+        if city and city.lower() != "all":
+            query = query.filter(Bus.city == city)
+        buses = query.all()
+        
+        now = datetime.now()
+        progress_pct = int((now.second * 100) / 60)
+        
+        res = []
+        for b in buses:
+            # Deterministic pseudo-random speed & occupancy based on bus id
+            random.seed(b.id + 42)
+            speed = random.randint(25, 45)
+            occupancy = random.randint(28, 48)
+            random.seed() # reset seed
+            
+            res.append({
+                "id": b.id,
                 "bus_number": b.bus_number,
+                "city": b.city or "Coimbatore",
                 "route_name": b.route_name,
                 "capacity": b.capacity,
                 "driver_name": b.driver_name,
                 "driver_phone": b.driver_phone,
                 "stop_count": len(b.stops),
-            }
-            for b in buses
-        ]
+                "speed_kmh": speed,
+                "occupancy": occupancy,
+                "live_status": "En Route",
+                "progress_pct": progress_pct
+            })
+        return res
     except Exception as e:
         logger.exception(f"Transport Agent error in get_all_buses: {e}")
         return []
-
 
 def get_bus_stops(db: Session, bus_number: str) -> Dict:
     logger.info(f"Transport Agent: get_bus_stops for bus_number={bus_number}")
@@ -43,6 +62,7 @@ def get_bus_stops(db: Session, bus_number: str) -> Dict:
                     "order": stop.stop_order,
                     "name": stop.stop_name,
                     "scheduled_arrival": stop.scheduled_arrival,
+                    "is_spot": stop.is_spot,
                     "latitude": stop.latitude,
                     "longitude": stop.longitude,
                 }
@@ -201,3 +221,141 @@ def get_optimal_bus_route(db: Session, from_stop: str, to_stop: str) -> Dict:
     except Exception as e:
         logger.exception(f"Transport Agent error in get_optimal_bus_route: {e}")
         return {"error": f"Error finding route: {str(e)}"}
+
+
+def get_seats_layout(db: Session, bus_id: int, travel_date: str) -> List[Dict]:
+    logger.info(f"Transport Agent: get_seats_layout bus_id={bus_id} date={travel_date}")
+    try:
+        # Fetch confirmed bookings for this bus & date
+        bookings = db.query(BusTicketBooking).filter(
+            BusTicketBooking.bus_id == bus_id,
+            BusTicketBooking.travel_date == travel_date,
+            BusTicketBooking.status == "CONFIRMED"
+        ).all()
+        booked_seats = {b.seat_number for b in bookings}
+        
+        # Generate 50 seats layout (Rows 1-12: A,B,C,D; Row 13: A,B)
+        layout = []
+        for r in range(1, 13):
+            for col in ["A", "B", "C", "D"]:
+                seat_id = f"{r}{col}"
+                layout.append({
+                    "seat_number": seat_id,
+                    "row": r,
+                    "column": col,
+                    "is_booked": seat_id in booked_seats
+                })
+        for col in ["A", "B"]:
+            seat_id = f"13{col}"
+            layout.append({
+                "seat_number": seat_id,
+                "row": 13,
+                "column": col,
+                "is_booked": seat_id in booked_seats
+            })
+        return layout
+    except Exception as e:
+        logger.exception(f"Transport Agent error in get_seats_layout: {e}")
+        return []
+
+def book_ticket(db: Session, student_id: str, student_name: str, hostel_block_room: str, 
+                bus_id: int, seat_number: str, travel_date: str, destination_city: str, 
+                boarding_point: str, drop_point: str, departure_time: str, contact_phone: str) -> Dict:
+    logger.info(f"Transport Agent: book_ticket student_id={student_id} bus_id={bus_id} seat={seat_number} date={travel_date}")
+    try:
+        # Check availability
+        existing = db.query(BusTicketBooking).filter(
+            BusTicketBooking.bus_id == bus_id,
+            BusTicketBooking.travel_date == travel_date,
+            BusTicketBooking.seat_number == seat_number,
+            BusTicketBooking.status == "CONFIRMED"
+        ).first()
+        if existing:
+            return {"error": "Seat is already reserved by another passenger."}
+            
+        tkt_num = f"TKT-{datetime.now().strftime('%Y%m%d')}-{random.randint(1000, 9999)}"
+        qr_data = f"TICKET:{tkt_num}:{student_id}:{seat_number}:{travel_date}"
+        
+        booking = BusTicketBooking(
+            ticket_number=tkt_num,
+            student_id=student_id,
+            student_name=student_name,
+            hostel_block_room=hostel_block_room,
+            bus_id=bus_id,
+            seat_number=seat_number,
+            travel_date=travel_date,
+            destination_city=destination_city,
+            boarding_point=boarding_point,
+            drop_point=drop_point,
+            departure_time=departure_time,
+            contact_phone=contact_phone,
+            status="CONFIRMED",
+            qr_code_data=qr_data
+        )
+        db.add(booking)
+        db.commit()
+        db.refresh(booking)
+        
+        return {
+            "status": "Success",
+            "ticket_number": tkt_num,
+            "message": f"Seat {seat_number} reserved successfully! Ticket ID: {tkt_num}.",
+            "booking": {
+                "id": booking.id,
+                "ticket_number": booking.ticket_number,
+                "student_id": booking.student_id,
+                "seat_number": booking.seat_number,
+                "travel_date": booking.travel_date,
+                "qr_code_data": booking.qr_code_data
+            }
+        }
+    except Exception as e:
+        logger.exception(f"Transport Agent error in book_ticket: {e}")
+        return {"error": f"Failed to book ticket: {str(e)}"}
+
+def get_student_tickets(db: Session, student_id: str) -> List[Dict]:
+    logger.info(f"Transport Agent: get_student_tickets student_id={student_id}")
+    try:
+        bookings = db.query(BusTicketBooking).filter(
+            BusTicketBooking.student_id == student_id
+        ).order_by(BusTicketBooking.id.desc()).all()
+        
+        res = []
+        for b in bookings:
+            bus = db.query(Bus).filter(Bus.id == b.bus_id).first()
+            bus_number = bus.bus_number if bus else "N/A"
+            res.append({
+                "id": b.id,
+                "ticket_number": b.ticket_number,
+                "student_id": b.student_id,
+                "student_name": b.student_name,
+                "hostel_block_room": b.hostel_block_room,
+                "bus_id": b.bus_id,
+                "bus_number": bus_number,
+                "seat_number": b.seat_number,
+                "travel_date": b.travel_date,
+                "destination_city": b.destination_city,
+                "boarding_point": b.boarding_point,
+                "drop_point": b.drop_point,
+                "departure_time": b.departure_time,
+                "contact_phone": b.contact_phone,
+                "status": b.status,
+                "qr_code_data": b.qr_code_data
+            })
+        return res
+    except Exception as e:
+        logger.exception(f"Transport Agent error in get_student_tickets: {e}")
+        return []
+
+def cancel_ticket(db: Session, ticket_id: int) -> Dict:
+    logger.info(f"Transport Agent: cancel_ticket ticket_id={ticket_id}")
+    try:
+        booking = db.query(BusTicketBooking).filter(BusTicketBooking.id == ticket_id).first()
+        if not booking:
+            return {"error": "Ticket reservation not found."}
+        booking.status = "CANCELLED"
+        db.commit()
+        return {"status": "Success", "message": "Ticket reservation cancelled successfully."}
+    except Exception as e:
+        logger.exception(f"Transport Agent error in cancel_ticket: {e}")
+        return {"error": f"Failed to cancel reservation: {str(e)}"}

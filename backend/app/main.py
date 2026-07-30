@@ -20,6 +20,7 @@ from app.api.hackathon import router as hackathon_router
 from app.api.transport import router as transport_router
 from app.api.feedback import router as feedback_router
 from app.api.alumni import router as alumni_router
+from app.api.office import router as office_router
 
 # ── Orchestrator ──────────────────────────────────────────────────────────────
 from app.agents.orchestrator import query_orchestrator
@@ -30,6 +31,23 @@ app = FastAPI(
     version="2.0.0",
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
+
+from app.core.database import engine, Base
+Base.metadata.create_all(bind=engine)
+
+# ── Dynamic Index Creation for Performance Optimization ──
+from sqlalchemy import text
+with engine.connect() as conn:
+    tables_to_index = [
+        "bus_ticket_bookings", "attendance_records", "hostel_allocations",
+        "hostel_complaints", "food_orders", "food_ratings", "student_skills",
+        "hackathon_registrations", "feedback_responses", "mentorship_requests",
+        "fee_statements", "certificate_requests", "office_requests",
+        "office_documents", "hall_tickets", "exam_results"
+    ]
+    for table in tables_to_index:
+        conn.execute(text(f"CREATE INDEX IF NOT EXISTS ix_{table}_student_id ON {table} (student_id);"))
+    conn.commit()
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
 app.add_middleware(
@@ -54,6 +72,7 @@ app.include_router(hackathon_router,   prefix=PREFIX)
 app.include_router(transport_router,   prefix=PREFIX)
 app.include_router(feedback_router,    prefix=PREFIX)
 app.include_router(alumni_router,      prefix=PREFIX)
+app.include_router(office_router,      prefix=PREFIX)
 
 # ── Orchestrator Endpoint ─────────────────────────────────────────────────────
 class QueryPayload(BaseModel):
@@ -61,11 +80,13 @@ class QueryPayload(BaseModel):
     student_id: str
     session_id: str = None
 
+from fastapi.concurrency import run_in_threadpool
+
 @app.post(f"{PREFIX}/orchestrator/query", tags=["Orchestrator"])
-def orchestrator_query(payload: QueryPayload):
+async def orchestrator_query(payload: QueryPayload):
     try:
         session_id = payload.session_id or f"session_{payload.student_id}"
-        response_text = query_orchestrator(payload.query, payload.student_id, session_id)
+        response_text = await run_in_threadpool(query_orchestrator, payload.query, payload.student_id, session_id)
         return {"response": response_text}
     except Exception as e:
         raise HTTPException(
@@ -111,4 +132,4 @@ def read_root():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("app.main:app", host="127.0.0.1", port=8000, reload=True)

@@ -7,32 +7,55 @@ import random
 
 def seed_campus(db: Session):
     print("Seeding Campus Navigation Graph...")
-    buildings = db.query(Building).all()
-    if buildings:
-        # Create a connected graph. Connect each building to its 3 closest neighbors
-        for b1 in buildings:
-            distances = []
-            for b2 in buildings:
-                if b1.id != b2.id:
-                    # simplistic distance calc for mock data
-                    dist = ((b1.latitude - b2.latitude)**2 + (b1.longitude - b2.longitude)**2)**0.5 * 100000
-                    distances.append((dist, b2))
+    buildings_list = db.query(Building).all()
+    b_map = {b.name: b for b in buildings_list}
+    
+    connections = [
+        ("Main Gate", "Main Block"),
+        ("Main Gate", "AI Block"),
+        ("Main Block", "Office Room"),
+        ("Main Block", "Playground"),
+        ("AI Block", "Mech Block"),
+        ("AI Block", "Boys Hostel A Block"),
+        ("Mech Block", "Office Room"),
+        ("Office Room", "Amenity Center"),
+        ("Office Room", "Xerox Shop"),
+        ("Amenity Center", "Playground"),
+        ("Amenity Center", "Xerox Shop"),
+        ("Xerox Shop", "Cafe Corner"),
+        ("Cafe Corner", "Medical Center"),
+        ("Cafe Corner", "Tea Shop"),
+        ("Medical Center", "Girls Hostel A Block"),
+        ("Tea Shop", "Mario"),
+        ("Mario", "Girls Hostel C Block"),
+        ("Playground", "Drone Block"),
+        ("Boys Hostel A Block", "Boys Hostel B Block"),
+        ("Boys Hostel A Block", "Boys Hostel C Block"),
+        ("Boys Hostel C Block", "Boys Hostel D Block"),
+        ("Girls Hostel A Block", "Girls Hostel B Block"),
+        ("Girls Hostel A Block", "Girls Hostel C Block")
+    ]
+
+    for name1, name2 in connections:
+        b1 = b_map.get(name1)
+        b2 = b_map.get(name2)
+        if b1 and b2:
+            # Simple euclidean distance calculation for lat/lng
+            dist = ((b1.latitude - b2.latitude)**2 + (b1.longitude - b2.longitude)**2)**0.5 * 1000
+            walk_time = max(1.0, round(dist / 80.0, 1))
             
-            distances.sort(key=lambda x: x[0])
-            for dist, b2 in distances[:3]:
-                # Add bidirectional edge
-                for s, d in [(b1, b2), (b2, b1)]:
-                    exists = db.query(CampusRoute).filter_by(source_id=s.id, destination_id=d.id).first()
-                    if not exists:
-                        walk_time = dist / 80.0
-                        db.add(CampusRoute(
-                            source_id=s.id,
-                            destination_id=d.id,
-                            distance_meters=round(dist, 2),
-                            walk_time_minutes=round(max(1.0, walk_time), 1),
-                            path_description=f"Pathway from {s.name} to {d.name}"
-                        ))
-        db.commit()
+            # Bidirectional routes
+            for s, d in [(b1, b2), (b2, b1)]:
+                exists = db.query(CampusRoute).filter_by(source_id=s.id, destination_id=d.id).first()
+                if not exists:
+                    db.add(CampusRoute(
+                        source_id=s.id,
+                        destination_id=d.id,
+                        distance_meters=round(dist, 1),
+                        walk_time_minutes=walk_time,
+                        path_description=f"Walkway between {s.name} and {d.name}"
+                    ))
+    db.commit()
 
     print("Seeding Library (15000 books)...")
     departments = db.query(Department).all()

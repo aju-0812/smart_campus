@@ -24,26 +24,26 @@ DEPARTMENTS = {
 }
 
 BUILDINGS = [
-    {"name": "Admin Block", "type": "Admin", "lat": 12.9716, "lng": 77.5946},
-    {"name": "Main Gate", "type": "Gate", "lat": 12.9712, "lng": 77.5940},
-    {"name": "Central Library", "type": "Academic", "lat": 12.9720, "lng": 77.5950},
-    {"name": "AI Block", "type": "Academic", "lat": 12.9725, "lng": 77.5955},
-    {"name": "Mechanical Block", "type": "Academic", "lat": 12.9730, "lng": 77.5960},
-    {"name": "Civil Block", "type": "Academic", "lat": 12.9735, "lng": 77.5965},
-    {"name": "ECE Block", "type": "Academic", "lat": 12.9740, "lng": 77.5970},
-    {"name": "EEE Block", "type": "Academic", "lat": 12.9745, "lng": 77.5975},
-    {"name": "Auditorium", "type": "Events", "lat": 12.9750, "lng": 77.5980},
-    {"name": "Sports Complex", "type": "Sports", "lat": 12.9710, "lng": 77.5985},
-    {"name": "Food Court", "type": "Cafeteria", "lat": 12.9705, "lng": 77.5990},
-    {"name": "Boys Hostel A", "type": "Hostel", "lat": 12.9700, "lng": 77.5995},
-    {"name": "Boys Hostel B", "type": "Hostel", "lat": 12.9695, "lng": 77.5990},
-    {"name": "Girls Hostel", "type": "Hostel", "lat": 12.9690, "lng": 77.5985},
-    {"name": "Medical Centre", "type": "Medical", "lat": 12.9685, "lng": 77.5980},
-    {"name": "Placement Cell", "type": "Admin", "lat": 12.9680, "lng": 77.5975},
-    {"name": "Innovation Lab", "type": "Academic", "lat": 12.9675, "lng": 77.5970},
-    {"name": "Student Activity Centre", "type": "Events", "lat": 12.9670, "lng": 77.5965},
-    {"name": "Campus Temple", "type": "Misc", "lat": 12.9665, "lng": 77.5960},
-    {"name": "Bus Bay", "type": "Transport", "lat": 12.9660, "lng": 77.5955}
+    {"name": "Main Gate", "type": "Gate", "lat": 0.8, "lng": 4.5},
+    {"name": "Main Block", "type": "Academic", "lat": 2.5, "lng": 3.5},
+    {"name": "AI Block", "type": "Academic", "lat": 2.2, "lng": 5.6},
+    {"name": "Mech Block", "type": "Academic", "lat": 3.4, "lng": 5.6},
+    {"name": "Office Room", "type": "Admin", "lat": 4.2, "lng": 4.7},
+    {"name": "Amenity Center", "type": "Academic", "lat": 5.5, "lng": 4.5},
+    {"name": "Xerox Shop", "type": "Academic", "lat": 5.3, "lng": 5.3},
+    {"name": "Cafe Corner", "type": "Cafeteria", "lat": 5.3, "lng": 5.9},
+    {"name": "Medical Center", "type": "Medical", "lat": 5.3, "lng": 6.5},
+    {"name": "Tea Shop", "type": "Cafeteria", "lat": 6.4, "lng": 5.4},
+    {"name": "Mario", "type": "Misc", "lat": 6.4, "lng": 6.0},
+    {"name": "Playground", "type": "Sports", "lat": 5.1, "lng": 3.0},
+    {"name": "Drone Block", "type": "Academic", "lat": 6.7, "lng": 2.8},
+    {"name": "Boys Hostel A Block", "type": "Hostel", "lat": 2.2, "lng": 7.5},
+    {"name": "Boys Hostel B Block", "type": "Hostel", "lat": 2.2, "lng": 8.3},
+    {"name": "Boys Hostel C Block", "type": "Hostel", "lat": 3.3, "lng": 7.5},
+    {"name": "Boys Hostel D Block", "type": "Hostel", "lat": 3.3, "lng": 8.3},
+    {"name": "Girls Hostel A Block", "type": "Hostel", "lat": 5.4, "lng": 7.5},
+    {"name": "Girls Hostel B Block", "type": "Hostel", "lat": 5.4, "lng": 8.2},
+    {"name": "Girls Hostel C Block", "type": "Hostel", "lat": 6.3, "lng": 7.9}
 ]
 
 FACULTY_FIRST_NAMES = ["Priya", "Arjun", "Meena", "Rahul", "Anjali", "Vikram", "Sneha", "Rohan", "Kavya", "Siddharth", "Neha", "Aditya", "Pooja", "Karan", "Shruti"]

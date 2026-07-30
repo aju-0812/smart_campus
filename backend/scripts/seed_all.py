@@ -17,9 +17,10 @@ from app.models.models import (
     StudentSkill, Company, CompanySkillRequirement, PlacementProfile, InterviewQuestion,
     ExamSchedule, HallTicket, ExamResult,
     Hackathon, HackathonRegistration,
-    Bus, BusStop, BusSchedule, BusDelay,
+    Bus, BusStop, BusSchedule, BusDelay, BusTicketBooking,
     FeedbackForm, FeedbackResponse,
     Alumni, AlumniSkill, MentorshipRequest,
+    FeeStatement, CertificateRequest, OfficeRequest, OfficeDocument, OfficeAnnouncement,
 )
 from faker import Faker
 import random
@@ -629,64 +630,129 @@ def seed_hackathon(db: Session):
 #  AGENT 9 — TRANSPORT
 # ════════════════════════════════════════════════════════════════
 def seed_transport(db: Session):
-    if db.query(Bus).count() > 0:
-        print("⏭️  Transport data already seeded. Skipping.")
-        return
-
-    print("🚌 Seeding Transport data...")
-
-    bus_routes = [
-        ("BUS-01", "City Center → Campus", ["City Bus Stand", "Railway Station", "Market Road", "Anna Nagar", "Tech Park", "College Main Gate"], "06:30", "07:45"),
-        ("BUS-02", "North City → Campus", ["Airport Road", "Phase II", "Coimbatore North", "Gandhipuram", "Town Hall", "College Main Gate"], "07:00", "08:15"),
-        ("BUS-03", "South Suburb → Campus", ["Singanallur", "Ganapathy", "Saravanampatti", "Peelamedu", "Avinashi Road", "College Main Gate"], "06:45", "08:00"),
-        ("BUS-04", "Campus Shuttle A", ["College Main Gate", "Boys Hostel A", "Boys Hostel B", "Girls Hostel A", "CS Block"], "07:30", "07:50"),
-        ("BUS-05", "Campus Shuttle B", ["College Main Gate", "Admin Block", "Library", "Cafeteria", "EC Block", "Sports Complex"], "08:00", "08:20"),
-    ]
-
-    for bus_num, route_name, stops, dep, arr in bus_routes:
-        bus = Bus(
-            bus_number=bus_num, route_name=route_name, capacity=50,
-            driver_name=fake.name(), driver_phone=f"9{random.randint(100000000,999999999)}",
-            is_active=True
-        )
-        db.add(bus)
-        db.flush()
-
-        # Add stops
-        for i, stop_name in enumerate(stops):
-            dep_h, dep_m = map(int, dep.split(':'))
-            min_offset = i * 10
-            arr_h = dep_h + (dep_m + min_offset) // 60
-            arr_m = (dep_m + min_offset) % 60
-            bs = BusStop(
-                bus_id=bus.id, stop_name=stop_name, stop_order=i + 1,
-                scheduled_arrival=f"{arr_h:02d}:{arr_m:02d}",
-                latitude=11.0160 + i * 0.002 + random.uniform(-0.001, 0.001),
-                longitude=76.9556 + i * 0.002 + random.uniform(-0.001, 0.001)
-            )
-            db.add(bs)
-
-        # Schedules
-        for direction, dep_t, arr_t in [("To Campus", dep, arr), ("From Campus", arr, dep)]:
-            sched = BusSchedule(
-                bus_id=bus.id, direction=direction, departure_time=dep_t,
-                arrival_time=arr_t, days_of_operation="Mon-Fri"
-            )
-            db.add(sched)
-
-        # Historical delay data
-        for day_offset in range(60):
-            delay_min = max(0, int(random.gauss(5, 8)))
-            delay = BusDelay(
-                bus_id=bus.id,
-                delay_date=date.today() - timedelta(days=day_offset),
-                delay_minutes=delay_min,
-                reason=random.choice(["Traffic", "Traffic", "Traffic", "Breakdown", "Weather", None])
-            )
-            db.add(delay)
-
+    print("🧹 Cleaning existing transport tables to seed custom 42 buses...")
+    db.query(BusDelay).delete()
+    db.query(BusSchedule).delete()
+    db.query(BusStop).delete()
+    db.query(Bus).delete()
     db.commit()
-    print(f"   ✅ {len(bus_routes)} buses with stops, schedules, and 60-day delay history seeded.")
+
+    print("🚌 Seeding Expanded Transport data (42 buses across 4 regions)...")
+
+    regions_config = {
+        "Coimbatore": {
+            "prefix": "BUS-CB",
+            "count": 12,
+            "spots": [
+                "Eachanari Temple", "Sundarapuram", "Ukkadam Bus Stand", "Town Hall", 
+                "Gandhipuram Central", "Peelamedu Airport Road", "Nava India", 
+                "Coimbatore Junction Railway Station", "Singanallur Bus Stand", 
+                "TIDEL Park IT Expressway", "Coimbatore International Airport (CJB)"
+            ]
+        },
+        "Tiruppur": {
+            "prefix": "BUS-TP",
+            "count": 10,
+            "spots": [
+                "Palladam Central Bus Stand", "Mangalam Market", "Tiruppur Old Bus Stand", 
+                "Avinashi Bypass", "Tiruppur New Bus Stand", "Veerapandi Industrial Hub", 
+                "Tiruppur Railway Station", "Kumaran Memorial Statue", "Cotton Market Exchange"
+            ]
+        },
+        "Udumalai": {
+            "prefix": "BUS-UD",
+            "count": 10,
+            "spots": [
+                "Kaniyur Highway Junction", "SV Puram Landmark", "Udumalpet Central Bus Stand", 
+                "Palani Road Junction", "Thirumoorthy Nagar", "Udumalai Clock Tower", 
+                "Pethappampatti Weekly Market", "Amaravathi Nagar", "Thirumoorthy Dam Entrance"
+            ]
+        },
+        "Pollachi": {
+            "prefix": "BUS-PL",
+            "count": 10,
+            "spots": [
+                "Kinathukadavu Bus Stand", "Kovai Road Toll Plaza", "Achipatti Junction", 
+                "Pollachi Central Bus Stand", "Zamin Uthukuli", "Mahalingapuram Roundana", 
+                "NGM Arts & Science College", "Aliyar Dam Entrance", "Pollachi Old Bus Stand"
+            ]
+        }
+    }
+
+    # Generate 42 buses
+    for city, config in regions_config.items():
+        for i in range(1, config["count"] + 1):
+            bus_num = f"{config['prefix']}-{i:02d}"
+            
+            # Select random set of spots for this bus path
+            sampled_spots = random.sample(config["spots"], random.randint(3, 5))
+            # Build route stops list: start at College Gate, pass spots, end at the last spot
+            route_stops = ["College Main Gate"] + sorted(sampled_spots)
+            route_name = " ➔ ".join(route_stops)
+            
+            bus = Bus(
+                bus_number=bus_num,
+                city=city,
+                route_name=route_name,
+                capacity=50,
+                driver_name=fake.name(),
+                driver_phone=f"9{random.randint(100000000,999999999)}",
+                is_active=True
+            )
+            db.add(bus)
+            db.flush()
+
+            # Create stops
+            dep = "16:30" if i % 2 == 0 else "17:15"
+            dep_h, dep_m = map(int, dep.split(':'))
+            
+            for stop_order, stop_name in enumerate(route_stops):
+                min_offset = stop_order * 12
+                arr_h = dep_h + (dep_m + min_offset) // 60
+                arr_m = (dep_m + min_offset) % 60
+                
+                # Check if it's a spot (anything other than start gate is a spot from our config)
+                is_spot = (stop_name != "College Main Gate")
+                
+                bs = BusStop(
+                    bus_id=bus.id,
+                    stop_name=stop_name,
+                    stop_order=stop_order + 1,
+                    scheduled_arrival=f"{arr_h:02d}:{arr_m:02d}",
+                    is_spot=is_spot,
+                    latitude=11.0160 + stop_order * 0.003 + random.uniform(-0.001, 0.001),
+                    longitude=76.9556 + stop_order * 0.003 + random.uniform(-0.001, 0.001)
+                )
+                db.add(bs)
+
+            # Create Schedules
+            db.add(BusSchedule(
+                bus_id=bus.id,
+                direction="To Campus",
+                departure_time="07:00",
+                arrival_time="08:15",
+                days_of_operation="Mon-Fri & Vacation Leave"
+            ))
+            db.add(BusSchedule(
+                bus_id=bus.id,
+                direction="From Campus",
+                departure_time=dep,
+                arrival_time=f"{arr_h:02d}:{arr_m:02d}",
+                days_of_operation="Mon-Fri & Vacation Leave"
+            ))
+
+            # Historical delays (60 days)
+            for day_offset in range(60):
+                delay_min = max(0, int(random.gauss(8, 10)))
+                db.add(BusDelay(
+                    bus_id=bus.id,
+                    delay_date=date.today() - timedelta(days=day_offset),
+                    delay_minutes=delay_min,
+                    reason=random.choice(["Traffic at Toll Gate", "Signal Delay", "Road Construction", "Heavy Traffic", None])
+                ))
+                
+    db.commit()
+    print("   ✅ 42 buses with stops, schedules, and 60-day delay history seeded successfully.")
 
 # ════════════════════════════════════════════════════════════════
 #  AGENT 10 — FEEDBACK
@@ -833,6 +899,160 @@ def seed_alumni(db: Session):
     db.commit()
     print(f"   ✅ {len(alumni_list)} alumni with skills seeded.")
 
+
+# ════════════════════════════════════════════════════════════════
+#  OFFICE AGENT SEEDER
+# ════════════════════════════════════════════════════════════════
+def seed_office(db: Session):
+    if db.query(FeeStatement).count() > 0:
+        print("⏭️  Office data already seeded. Skipping.")
+        return
+
+    print("💼 Seeding Office Agent data...")
+    
+    students = db.query(Student).all()
+    if not students:
+        print("⚠️ No students found in database. Cannot seed Office data.")
+        return
+
+    # 1. Seed Office Announcements
+    announcements_data = [
+        ("Exam Registration opens from August 5", "Deadline", "All students are requested to register for odd semester end exams before August 20 without late fee.", date(2026, 7, 25), date(2026, 8, 20)),
+        ("Odd Semester Registration Deadline August 10", "Deadline", "Enrollment and course registration for the upcoming semester must be completed by August 10.", date(2026, 7, 20), date(2026, 8, 10)),
+        ("Independence Day Holiday — Office Closed on August 15", "Holiday", "The college administrative offices will remain closed on August 15 in view of Independence Day.", date(2026, 8, 1), date(2026, 8, 16)),
+        ("Scholarship Deadline Extended (National Scholarship Portal)", "Deadline", "The deadline to apply for NSP scholarship schemes has been extended to September 10.", date(2026, 7, 28), date(2026, 9, 10)),
+        ("Certificate Collection Dates for Batch 2025", "Circular", "Graduated students can collect their degree and transfer certificates from Counter 3 starting August 1.", date(2026, 7, 26), date(2026, 8, 30)),
+        ("General Circular: Smart Campus Mobile App Launch", "Circular", "Smart Campus autonomous agent portal is now live for all students.", date(2026, 7, 29), None)
+    ]
+    for title, type_name, content, pub_date, exp_date in announcements_data:
+        db.add(OfficeAnnouncement(title=title, announcement_type=type_name, content=content, publish_date=pub_date, expiry_date=exp_date))
+
+    # 2. Seed Fee Statements, Documents, Requests for students
+    for idx, student in enumerate(students):
+        # Determine fees based on department/hostel status
+        is_hosteller = student.is_hosteller
+        tuition = 55000.0 if student.department in ["CSE", "IT", "AIDS"] else 50000.0
+        transport = 12000.0 if idx % 3 != 0 else 15000.0
+        hostel = 40000.0 if is_hosteller else 0.0
+        lab = 5000.0
+        exam = 3500.0
+        misc = 3000.0
+        total = tuition + transport + hostel + lab + exam + misc
+        
+        # S100001 must have exactly 18500 pending balance
+        if student.student_id == "S100001":
+            paid = total - 18500.0
+            pending = 18500.0
+        else:
+            # Randomize payment: fully paid, partially paid, or unpaid
+            pay_status = random.choice(["Full", "Partial", "Unpaid"])
+            if pay_status == "Full":
+                paid = total
+                pending = 0.0
+            elif pay_status == "Partial":
+                pending = round(random.uniform(5000, 25000), -2)
+                paid = total - pending
+            else:
+                paid = 0.0
+                pending = total
+
+        db.add(FeeStatement(
+            student_id=student.student_id,
+            semester=student.semester,
+            current_semester_fee=tuition + lab + exam,
+            total_fee=total,
+            paid_amount=paid,
+            pending_balance=pending,
+            due_date=date(2026, 8, 15),
+            late_fee=500.0 if pending > 0 and random.random() > 0.75 else 0.0,
+            fee_breakdown={
+                "Tuition": tuition,
+                "Transport": transport,
+                "Hostel": hostel,
+                "Exam Fee": exam,
+                "Lab Fee": lab,
+                "Miscellaneous": misc
+            },
+            payment_history=[
+                {
+                    "receipt_no": f"REC2401{100+idx}",
+                    "amount": paid if paid > 0 else 0.0,
+                    "date": "2026-02-10" if paid > 0 else "",
+                    "mode": random.choice(["Demand Draft", "Online Transfer", "Challan"]) if paid > 0 else ""
+                }
+            ] if paid > 0 else []
+        ))
+
+        # Documents
+        if paid > 0:
+            db.add(OfficeDocument(
+                student_id=student.student_id,
+                document_name=f"Fee Receipt - Semester {student.semester} (No: REC2401{100+idx})",
+                document_type="Receipt",
+                download_url=f"/documents/receipt_rec2401{100+idx}.pdf"
+            ))
+        db.add(OfficeDocument(
+            student_id=student.student_id,
+            document_name=f"Fee Ledger Statement - Academic Year 2025-2026",
+            document_type="Statement",
+            download_url=f"/documents/fee_statement_{student.student_id}.pdf"
+        ))
+
+        # Certificate requests
+        if student.student_id == "S100001":
+            # Approved Bonafide Certificate request
+            db.add(CertificateRequest(
+                student_id=student.student_id,
+                certificate_type="Bonafide Certificate",
+                status="Approved",
+                application_number="OFF20260045",
+                created_date=datetime.now() - timedelta(days=5),
+                estimated_completion_date=date.today() - timedelta(days=1),
+                remarks="Certificate approved and printed. Please collect from Counter 1."
+            ))
+            # Under Verification Internship letter request
+            db.add(CertificateRequest(
+                student_id=student.student_id,
+                certificate_type="Internship Letter",
+                status="Under Verification",
+                application_number="OFF20260089",
+                created_date=datetime.now() - timedelta(days=1),
+                estimated_completion_date=date.today() + timedelta(days=3),
+                remarks="Request forwarded to department coordinator for approval."
+            ))
+        else:
+            if idx % 5 == 0:
+                db.add(CertificateRequest(
+                    student_id=student.student_id,
+                    certificate_type=random.choice(["Study Certificate", "Conduct Certificate", "No Dues Certificate"]),
+                    status=random.choice(["Submitted", "Under Verification", "Approved", "Ready for Collection"]),
+                    application_number=f"OFF2026{1000+idx}",
+                    created_date=datetime.now() - timedelta(days=random.randint(1, 10)),
+                    estimated_completion_date=date.today() + timedelta(days=random.randint(1, 5))
+                ))
+
+        # Office Requests
+        if student.student_id == "S100001":
+            db.add(OfficeRequest(
+                student_id=student.student_id,
+                request_type="Bus Pass Request",
+                request_number="REQ20260901",
+                status="Approved",
+                remarks="Bus Pass generated. Valid till Dec 2026."
+            ))
+        else:
+            if idx % 7 == 0:
+                db.add(OfficeRequest(
+                    student_id=student.student_id,
+                    request_type=random.choice(["ID Card Reissue", "Address Update", "Scholarship Verification", "Semester Registration"]),
+                    request_number=f"REQ2026{5000+idx}",
+                    status=random.choice(["Pending", "Approved", "Rejected"])
+                ))
+
+    db.commit()
+    print("   ✅ Office fee statements, documents, certificate requests and announcements seeded.")
+
+
 # ════════════════════════════════════════════════════════════════
 #  MAIN
 # ════════════════════════════════════════════════════════════════
@@ -854,12 +1074,14 @@ def main():
         seed_transport(db)
         seed_feedback(db)
         seed_alumni(db)
+        seed_office(db)
     finally:
         db.close()
 
     print("\n" + "=" * 60)
     print("  ✅ ALL AGENTS SEEDED SUCCESSFULLY!")
     print("=" * 60)
+
 
 if __name__ == "__main__":
     main()
